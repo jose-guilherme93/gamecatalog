@@ -76,6 +76,7 @@ export const loginController = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: 'Login realizado com sucesso',
       sessionToken,
+
     })
   } catch (error) {
     logger.error(`error ao logar: ${error}`)
