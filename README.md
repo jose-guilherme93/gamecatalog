@@ -1,3 +1,9 @@
+[![Status da Build](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
+[![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
+[![Tecnologias](https://img.shields.io/badge/Stack-Full%20Stack%20TS-informational)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Monitoramento](https://img.shields.io/badge/Monitoring-Grafana-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
+
 # Documentação do Projeto `Gamecatalog`
 
 Este é um projeto **Node.js/Express.js** estruturado como uma **API REST** robusta. Ele utiliza um design **MVC simplificado**, com foco em separação de responsabilidades entre controladores, modelos e rotas.
@@ -42,14 +48,19 @@ Siga os passos abaixo para configurar e iniciar o projeto no seu ambiente de des
 ### 1. Configuração do Ambiente
 
 1.  Certifique-se de ter o **Node.js** (versão 18+ é ideal para ESM) e o **PNPM** instalados.
-2.  Crie um arquivo **`.env`** na raiz do projeto com as seguintes variáveis de configuração do PostgreSQL e da chave de segurança:
+2.  Crie um arquivo **`.env.development`** na raiz do projeto com as seguintes variáveis de configuração do PostgreSQL e da chave de segurança:
 
     ```env
         PGHOST=localhost
-        POSTGRESDB=cruddb
-        POSTGRESUSER=postgres
+        PGPORT=5432
+        PGUSER=postgres
         PGPASSWORD=crudpass
-        DATABASE_URL=postgresql://postgres:crudpass@localhost/cruddb
+        PGDATABASE=cruddb
+        JWT_SECRET=qwdnqwldo
+        GF_SECURITY_ADMIN_USER=admin
+        GF_SECURITY_ADMIN_PASSWORD=adminpass
+        USERNAME_MAILER=username-mailtrap
+        USER_PASSWORD_TRANSPORTER_MAILER=password-mailtrap
     ```
 3. ## 🐳 Docker e Gerenciamento de Containers
 
