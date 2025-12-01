@@ -10,6 +10,7 @@ import { logger } from './scripts/logger.js'
 import { requestLogger } from './utils/middlewares.js'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
+import paymentRoutes from './routes/paymentRoutes.js'
 const env = process.env.NODE_ENV || 'development'
 const envFile = `.env.${env}`
 dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
@@ -53,6 +54,7 @@ app.use('/auth', authRoutes)
 app.use('/users', userRoutes)
 app.use('/games', gameRoutes)
 app.use('/reviews', reviewsRoutes)
+app.use('/payment', paymentRoutes)
 
 app.use((req, res) => {
   logger.warn(`Route no found: ${req.originalUrl}`)
