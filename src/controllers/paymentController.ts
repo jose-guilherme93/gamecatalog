@@ -35,8 +35,6 @@ export async function createDonationPayment(req: Request, res: Response) {
   }
   const platformFee = 0
 
-  const localDonationId: string | null = null
-
   const bodyData = validation.data
   const externalId = bodyData.metadata?.externalId || 'default-id'
   const id = crypto.randomUUID()
@@ -46,8 +44,7 @@ export async function createDonationPayment(req: Request, res: Response) {
         VALUES ($1, $2, $3, $4, $5, $6, $7) 
         RETURNING id`, [id, externalId, bodyData.amount, platformFee, bodyData.customer, bodyData.description, 'PENDING'])
     logger.info('ordem de pagamento inserida com sucesso')
-    localDonationId = query.rows[0].id
-
+    logger.info(JSON.stringify(query))
   } catch(error) {
     res.status(500).json({ message: 'error', error })
   }
