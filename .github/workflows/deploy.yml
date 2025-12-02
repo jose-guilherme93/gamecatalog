@@ -89,7 +89,7 @@ jobs:
             export GF_SECURITY_ADMIN_USER="${{ env.GF_SECURITY_ADMIN_USER }}"
             export GF_SECURITY_ADMIN_PASSWORD="${{ env.GF_SECURITY_ADMIN_PASSWORD }}"
             
-            export ABACATE_PAY_API: ${{ env.ABACATE_PAY_API }}
+            export ABACATE_PAY_API= "${{ env.ABACATE_PAY_API }}"
             
             # 3. Comandos de Deploy
             cd /root/node-vps/
