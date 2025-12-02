@@ -26,6 +26,9 @@ jobs:
       GF_SECURITY_ADMIN_USER: ${{ secrets.GF_SECURITY_ADMIN_USER }}
       GF_SECURITY_ADMIN_PASSWORD: ${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
 
+      #abacatepay
+      ABACATE_PAY_API: ${{ secrets.ABACATE_PAY_API }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,6 +89,7 @@ jobs:
             export GF_SECURITY_ADMIN_USER="${{ env.GF_SECURITY_ADMIN_USER }}"
             export GF_SECURITY_ADMIN_PASSWORD="${{ env.GF_SECURITY_ADMIN_PASSWORD }}"
             
+            export ABACATE_PAY_API: ${{ env.ABACATE_PAY_API }}
             
             # 3. Comandos de Deploy
             cd /root/node-vps/
