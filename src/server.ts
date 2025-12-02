@@ -2,15 +2,19 @@ import * as dotenv from 'dotenv'
 import * as path from 'path'
 import cors from 'cors'
 import express from 'express'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
+import { createServer } from 'node:http'
+import { Server } from 'socket.io'
 import userRoutes from './routes/userRoutes.js'
 import gameRoutes from './routes/gameRoutes.js'
 import reviewsRoutes from './routes/reviewsRoutes.js'
 import authRoutes from './routes/authRoutes.js'
-import { logger } from './scripts/logger.js'
-import { requestLogger } from './utils/middlewares.js'
-import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
 import paymentRoutes from './routes/paymentRoutes.js'
+import { requestLogger } from './utils/middlewares.js'
+import { logger } from './scripts/logger.js'
+import { fileURLToPath } from 'node:url'
+
 const env = process.env.NODE_ENV || 'development'
 const envFile = `.env.${env}`
 dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
@@ -18,13 +22,20 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
 const PORT = Number(process.env.SERVER_PORT) || 3000
 
 const app = express()
+const httpServer = createServer(app)
 
+export const io = new Server(httpServer)
 app.use(helmet())
 app.set('trust proxy', 1)
 app.use(cors())
 app.use(requestLogger)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true, limit: '10kb' }))
+app.use((req, res, next) => {req.io = io; next()}  )
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+app.use(express.static(path.join(__dirname, 'public')))
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

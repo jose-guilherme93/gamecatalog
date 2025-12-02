@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Diretório de migrations
-const migrationsDir = path.join(__dirname, 'src', 'migrations')
+const migrationsDir = path.resolve(__dirname, '..', '..', 'src', 'migrations')
 
 // Gera timestamp no formato YYYYMMDDHHMMSS
 function getTimestamp() {

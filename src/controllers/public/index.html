@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Pix Instantâneo com WebSockets</title>
+</head>
+<body>
+
+    <h1>Status do Pagamento Pix</h1>
+    <div id="status-display" style="font-size: 1.5em; color: orange;">Aguardando criação do Pix...</div>
+    <p>ID da Transação: <span id="external-id-display">N/A</span></p>
+
+    <button onclick="createPixDonation()">Gerar Novo Pix</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        const statusDisplay = document.getElementById('status-display')
+        const externalIdDisplay = document.getElementById('external-id-display')
+        let socket
+
+        async function createPixDonation() {
+            // 1. Gera um ID Único para esta transação (Simulando o metadata)
+            const currentExternalId = `DONATION-${Date.now()}`
+            externalIdDisplay.textContent = currentExternalId
+            statusDisplay.textContent = 'Gerando QR Code...'
+            statusDisplay.style.color = 'blue'
+
+            const donationData = {
+                amount: 1000,
+                description: 'Doação de Teste',
+                customer: {
+                    name: "Cliente Teste",
+                    cellphone: "(11) 99999-9999",
+                    email: "teste@exemplo.com",
+                    taxId: "123.456.789-00"
+                },
+                metadata: { externalId: currentExternalId }
+            }
+
+            // 2. Chama o Endpoint do Express para criar o Pix
+            const response = await fetch('/api/pix/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(donationData)
+            })
+
+            const result = await response.json()
+            
+            if (response.ok) {
+                // 3. Recebe os dados do Pix e exibe
+                statusDisplay.textContent = 'QR Code gerado. Aguardando pagamento...'
+                statusDisplay.style.color = 'orange'
+                
+                // Inicializa a conexão Socket.IO
+                connectSocket(currentExternalId) 
+            } else {
+                statusDisplay.textContent = `Erro: ${result.message}`
+                statusDisplay.style.color = 'red'
+            }
+        }
+
+        function connectSocket(externalId) {
+            if (socket) {
+                socket.disconnect() // Garante que apenas uma conexão esteja ativa
+            }
+            
+            // Conecta ao Socket.IO no mesmo domínio
+            socket = io() 
+
+            // 4. CLIENTE se inscreve na "sala" específica da transação
+            socket.on('connect', () => {
+                console.log(`Conectado ao Socket.IO. Entrando na sala: ${externalId}`)
+                // O servidor precisa de um handler para este evento 'join_room'
+                socket.emit('join_room', externalId) 
+            })
+
+            // 5. CLIENTE escuta o evento de confirmação enviado pelo Webhook
+            socket.on('payment_confirmed', (data) => {
+                statusDisplay.textContent = '✅ PIX PAGO COM SUCESSO!'
+                statusDisplay.style.color = 'green'
+                console.log('Confirmação de pagamento recebida:', data)
+                socket.disconnect() // O pagamento foi concluído, pode fechar o socket
+            })
+            
+            socket.on('connect_error', (err) => {
+                console.error("Connection error:", err.message);
+            });
+        }
+    </script>
+</body>
+</html>
