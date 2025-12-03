@@ -2,89 +2,73 @@ import { type Response, type Request } from 'express'
 import { z } from 'zod'
 
 import { logger } from '@/scripts/logger.js'
-import { pool } from '@/utils/connectDatabase.js'
 
-const donationSchema = z.object({
-  amount: z.number().int().positive(),
-  expiresIn: z.number().int().positive().optional(),
-  description: z.string(),
-  customer: z.object({
-    name: z.string().min(3),
-    cellphone: z.string().regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$/),
-    email: z.email(),
-    taxId: z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/),
-  }),
-  metadata: z.object({
-    externalId: z.string(),
-  }).optional(),
-})
+import { createDonationPaymentDB } from '@/models/paymentModel.js'
+import { QueryResult } from 'pg'
+import { DonationBody, DonationPayload, donationSchema } from '@/types/payment.js'
 
 const token = process.env.ABACATE_PAY_API
 
 export async function createDonationPayment(req: Request, res: Response) {
   logger.info('creating pix donation...')
 
-  const validation = donationSchema.safeParse(req.body)
-
-  if (!validation.success) {
-    logger.error('Validation error:', validation.error.issues)
-    return res.status(400).json({
-      message: 'Dados de requisição inválidos',
-      errors: validation.error.issues,
-    })
-  }
-  const platformFee = 0
-
-  const bodyData = validation.data
-  const externalId = bodyData.metadata?.externalId || 'default-id'
-  const id = crypto.randomUUID()
-  try {
-    const query = await pool.query(`INSERT INTO donations 
-        (id, external_id, amount, platform_fee, customer_data, description, status) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7) 
-        RETURNING id`, [id, externalId, bodyData.amount, platformFee, bodyData.customer, bodyData.description, 'PENDING'])
-    logger.info('ordem de pagamento inserida com sucesso')
-    logger.info(JSON.stringify(query))
-  } catch(error) {
-    res.status(500).json({ message: 'error', error })
-  }
-
-  const url = 'https://api.abacatepay.com/v1/pixQrCode/create'
-  const options = {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(bodyData),
+  const BodySchema = donationSchema.omit({
+    id: true,
+    platformFee: true,
+    status: true,
+  })
+  const parsedBody = BodySchema.safeParse(req.body)
+  if(!parsedBody.success) {
+    return res.status(401).json({ message: 'dados inválidos' })
   }
 
   try {
-    const response = await fetch(url, options)
-    const data = await response.json()
-
-    if (!response.ok) {
-      logger.error('API AbacatePay Error:', data)
-      return res.status(response.status).json({
-        message: 'Erro ao criar pagamento na AbacatePay',
-        data,
-        externalId,
-      })
+    const options = {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.ABACATE_PAY_API}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        parsedBody.data,
+      ),
     }
 
-    logger.info(JSON.stringify(data))
-    //   res.status(200).json({
-  //    message: 'Pagamento de doação Pix criado com sucesso',
-  //    data,
-    //   })
-  } catch (error) {
-    logger.error('Internal Server Error:', error)
-    return res.status(500).json({
-      message: 'Erro interno no servidor ao processar pagamento',
-    })
-  }
-}
+    fetch('https://api.abacatepay.com/v1/pixQrCode/create', options)
+      .then(res => res.json())
+      .then(res => logger.info(`abacatepay: ${ JSON.stringify(res)}`))
+      .catch(err => console.error(err))
 
+    const bodyPayload: DonationBody = {
+      amount: parsedBody.data.amount,
+      customer: parsedBody.data.customer,
+      description: parsedBody.data.description,
+      externalId: parsedBody.data.externalId,
+      expiresIn: 123,
+      metadata: parsedBody.data.metadata,
+    }
+
+    let queryDB: QueryResult | null = null
+
+    const data: DonationPayload = {
+      id: crypto.randomUUID(),
+      platformFee: 80,
+      status: 'PENDING',
+
+      ...bodyPayload,
+    }
+
+    try {
+      queryDB = await createDonationPaymentDB(data)
+      if(queryDB.rowCount! > 0) {
+        logger.info(`donation payment created id: ${JSON.stringify(queryDB.rows[0])}`)
+        res.status(201).json({ message: 'donation payment created.', id:queryDB.rows[0].id  })
+      } else {
+        logger.error('error at creation of donation payment on DB: ')
+      }
+    } catch(error) {
+      logger.error(`erro ao inserir no banco de dados: ${error}`)
+      res.status(500).json({ message: 'internal error' })
+    }
+  } catch(err) { logger.error(err)}
+}
 export async function checkPaymentDonation(req: Request, res: Response) {
   const { id } = req.body
   const url = `https://api.abacatepay.com/v1/pixQrCode/check?id=${id}`
@@ -99,14 +83,15 @@ export async function checkPaymentDonation(req: Request, res: Response) {
     const data = await response.json()
     logger.info(data)
     return res.status(200).json({ data })
-  } catch (error) {
+  }
+  catch (error) {
     logger.info(error)
   }
 }
 
-const webhookSecretSchema = z.string()
-
 export async function handleAbacatePayWebhook( req: Request, res: Response ) {
+
+  const webhookSecretSchema = z.string()
   logger.info('trying to receive data from webhook...')
 
   const { webhookSecret } = req.query
@@ -123,5 +108,4 @@ export async function handleAbacatePayWebhook( req: Request, res: Response ) {
   logger.info(`Received webhook:', ${JSON.stringify(event.data)}`)
 
   res.status(200).json({ received: true })
-
 }
