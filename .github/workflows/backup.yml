@@ -1,0 +1,115 @@
+name: "Deploy to VPS"
+
+#on:
+#  push:
+#    branches:
+#      - main   
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24.11"  
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Cache pnpm
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: success()
+    env:
+      HOST: ${{ secrets.HOST }}
+      USERNAME: ${{ secrets.USERNAME }}
+      KEY: ${{ secrets.KEY }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GF_SECURITY_ADMIN_USER: ${{ secrets.GF_SECURITY_ADMIN_USER }}
+      GF_SECURITY_ADMIN_PASSWORD: ${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
+      ABACATE_PAY_API: ${{ secrets.ABACATE_PAY_API }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate .env file from env
+      run: |
+        touch .env
+        printenv | grep -E 'HOST|USERNAME|KEY|POSTGRES_|DATABASE_URL|GF_SECURITY_|ABACATE_PAY_API' > .env
+
+    - name: Copy project files to VPS
+      uses: appleboy/scp-action@v1
+      with:
+        port: 22
+        host: ${{ env.HOST }}
+        username: ${{ env.USERNAME }}
+        key: ${{ env.KEY }}
+        source: "."
+        target: "gamecatalog"
+
+    - name: Copy .env to VPS
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ env.HOST }}
+        username: ${{ env.USERNAME }}
+        key: ${{ env.KEY }}
+        source: ".env"
+        target: "~/gamecatalog/.env"
+
+
+    - name: Run remote deploy
+      uses: appleboy/ssh-action@v1
+      with:
+        port: 22
+        host: ${{ env.HOST }}
+        username: ${{ env.USERNAME }}
+        key: ${{ env.KEY }}
+        script: |
+          set -e
+          cd ~/gamecatalog
+
+          echo "Build e migrações..."
+          pnpm install --frozen-lockfile
+          pnpm run build
+          pnpm run migrate
+
+          echo "Subindo containers com Node 24.11 slim..."
+          docker compose down || true
+          docker compose up -d --build
+
+          echo "✅ Deploy concluído com sucesso!"
+
+  rollback:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Restart current version
+        uses: appleboy/ssh-action@v1
+        with:
+          port: 22
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            echo "⚠️ Deploy falhou. Reiniciando containers atuais..."
+            cd ~/gamecatalog
+            docker compose up -d --build
+            echo "🔄 Rollback concluído!"
+

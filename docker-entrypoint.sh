@@ -1,13 +1,8 @@
 #!/bin/bash
 set -e
 
-
-export PGHOST="postgres"
-export PGPORT="$PGPORT"
-export POSTGRES_USER="$POSTGRES_USER"
-export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
-export POSTGRES_DB="$POSTGRES_DB"
-
+PGHOST=${PGHOST:-postgres}
+PGPORT=${PGPORT:-5432}
 
 echo "Waiting for postgres at $PGHOST:$PGPORT..."
 while ! nc -z "$PGHOST" "$PGPORT"; do

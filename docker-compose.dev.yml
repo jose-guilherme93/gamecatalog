@@ -1,53 +1,37 @@
 
 services:
- 
-  postgres:
-    image: postgres:15-alpine
-    container_name: gamecatalog_postgres
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file:
       - .env.development
-    restart: always
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - default
-
-  app:
-    build: .
-    container_name: gamecatalog_app
-    restart: always
-    networks:
-      - default
-      - grafana-network
-    environment:
-      
-      - PGHOST=${PGHOST}
-      - PGPORT=${PGPORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - HOST=${HOST}
-      - DATABASE_URL=${DATABASE_URL}
-      - USERNAME=${USERNAME}
     ports:
       - "3000:3000"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - .env.development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${PGPORT}:5432"
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    env_file:
+      - .env.development
+    ports:
+      - "3001:3000"
+    networks:
+      - grafana-network
 
 volumes:
-  pgdata:
-    driver: local
-    
+  postgres_data:
+
 networks:
   grafana-network:
-    external: true
+    driver: bridge
