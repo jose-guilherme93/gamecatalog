@@ -1,4 +1,4 @@
-import { logger } from '../../scripts/logger.js'
+import logger from '../../scripts/logger.js'
 import type { Response, Request } from 'express'
 import * as crypto from 'node:crypto'
 import { createTransport } from 'nodemailer'

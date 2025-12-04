@@ -1,4 +1,4 @@
-import { logger } from '../../scripts/logger.js'
+import logger from '../../scripts/logger.js'
 import { pool } from '../../utils/connectDatabase.js'
 import * as z from 'zod'
 import type { Request, Response } from 'express'

@@ -4,7 +4,7 @@ const env = process.env.NODE_ENV || 'development'
 const envFile = `.env.${env}`
 dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
 import { Pool } from 'pg'
-import { logger } from '../scripts/logger.js'
+import logger from '../scripts/logger.js'
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

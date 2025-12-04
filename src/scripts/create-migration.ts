@@ -3,7 +3,7 @@ configDotenv()
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { logger } from './logger.js'
+import logger from './logger.js'
 
 // Emula __dirname em ES Modules
 const __filename = fileURLToPath(import.meta.url)

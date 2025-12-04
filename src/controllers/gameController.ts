@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { createGame, getAllGamesDB, getGameById, updateGameDB } from '@/models/gameModel.js'
-import { logger } from '../scripts/logger.js'
+import logger from '../scripts/logger.js'
 import type { Game } from '@/types/game.js'
 import type { QueryResult } from 'pg'
 import * as z from 'zod'

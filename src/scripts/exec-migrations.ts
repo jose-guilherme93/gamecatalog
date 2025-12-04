@@ -7,7 +7,7 @@ import { Client } from 'pg'
 import fs from 'node:fs'
 
 import { fileURLToPath } from 'node:url'
-import { logger } from './logger.js'
+import logger from './logger.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

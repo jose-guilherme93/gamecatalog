@@ -8,7 +8,7 @@ const customFormat = printf(info => {
   return `${info.timestamp} [${info.level.toUpperCase()}]: ${info.message}`
 })
 
-export const logger = createLogger({
+const logger = createLogger({
   level: 'info',
   format: combine(
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -31,3 +31,5 @@ export const logger = createLogger({
     }),
   ],
 })
+
+export default logger

@@ -1,5 +1,5 @@
 import * as z from 'zod'
-import { logger } from '@/scripts/logger.js'
+import logger from '@/scripts/logger.js'
 import jwt from 'jsonwebtoken'
 import type { Response, Request } from 'express'
 import { insertSession, searchUserByEmail } from '@/models/authModel.js'

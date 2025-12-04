@@ -1,19 +1,22 @@
 import * as dotenv from 'dotenv'
 import * as path from 'path'
+import { createServer } from 'node:http'
+import { Server } from 'socket.io'
+import { fileURLToPath } from 'node:url'
+
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
-import { createServer } from 'node:http'
-import { Server } from 'socket.io'
 import userRoutes from './routes/userRoutes.js'
 import gameRoutes from './routes/gameRoutes.js'
 import reviewsRoutes from './routes/reviewsRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
-import { requestLogger } from './utils/middlewares.js'
-import { logger } from './scripts/logger.js'
-import { fileURLToPath } from 'node:url'
+import requestLogger from './utils/middlewares/logger.js'
+import logger from './scripts/logger.js'
+import globalLimiter from './utils/middlewares/globalRateLimiter.js'
+import authLimiter from './utils/middlewares/authRateLimiter.js'
+import notFoundRoute from './utils/middlewares/notFoundRoute.js'
 
 const env = process.env.NODE_ENV || 'development'
 const envFile = `.env.${env}`
@@ -23,6 +26,8 @@ const PORT = Number(process.env.SERVER_PORT) || 3000
 
 const app = express()
 const httpServer = createServer(app)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export const io = new Server(httpServer)
 app.use(helmet())
@@ -32,34 +37,10 @@ app.use(requestLogger)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true, limit: '10kb' }))
 app.use((req, res, next) => {req.io = io; next()}  )
+app.use('/docs', express.static(path.join(__dirname, 'docs')))
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-app.use(express.static(path.join(__dirname, 'public')))
-
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: JSON.stringify({ error: 'Too many requests, please try again later.' }),
-})
-
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: JSON.stringify({ error: 'Too many authentication attempts, please try again after an hour.' }),
-})
-
-app.use('/auth', authLimiter)
 app.use(globalLimiter)
-app.use('../favicon.png', (req, res) => res.status(204).end())
-app.get('/', (req, res) => res.status(200).json({
-  message: 'Gamecatalog API',
-  version: 'v0.1',
-}))
+app.use('/auth', authLimiter)
 
 app.use('/auth', authRoutes)
 app.use('/users', userRoutes)
@@ -67,14 +48,12 @@ app.use('/games', gameRoutes)
 app.use('/reviews', reviewsRoutes)
 app.use('/payment', paymentRoutes)
 
-app.use((req, res) => {
-  logger.warn(`Route no found: ${req.originalUrl}`)
-  res.status(404).json({
-    error: {
-      message: 'Route not found',
-      path: req.originalUrl,
-      timestamp: new Date().toISOString() } })
-})
+app.get('/', (req, res) => res.status(200).json({
+  message: 'Gamecatalog API',
+  version: 'v0.1',
+}))
+
+app.use(notFoundRoute)
 
 app.listen(PORT, '0.0.0.0', () => {
   logger.info('server is running')

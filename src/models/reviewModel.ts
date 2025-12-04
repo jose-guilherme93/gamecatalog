@@ -1,6 +1,6 @@
 import type { Review } from '@/types/review.js'
 import { pool } from '../utils/connectDatabase.js'
-import { logger } from '@/scripts/logger.js'
+import logger from '@/scripts/logger.js'
 
 interface ReviewParams {
   user_id: string

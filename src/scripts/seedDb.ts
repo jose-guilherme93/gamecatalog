@@ -1,6 +1,6 @@
 import { pool } from '../utils/connectDatabase.js'
 import { randomUUID } from 'crypto'
-import { logger } from './logger.js'
+import logger from './logger.js'
 
 const seed = async () => {
   try {

@@ -1,7 +1,7 @@
 import { type Response, type Request } from 'express'
 import { z } from 'zod'
 
-import { logger } from '@/scripts/logger.js'
+import logger from '@/scripts/logger.js'
 
 import { createDonationPaymentDB } from '@/models/paymentModel.js'
 import { QueryResult } from 'pg'

@@ -1,5 +1,5 @@
 import type { Response, Request } from 'express'
-import { logger } from '@/scripts/logger.js'
+import logger from '@/scripts/logger.js'
 import { checkExistingReview, createReviewDB, deleteReviewDB, getReviewByIdDB, updateReviewDB } from '../models/reviewModel.js'
 import * as zod from 'zod'
 import type { Review } from '@/types/review.js'
