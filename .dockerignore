@@ -1,4 +1,16 @@
 node_modules
-.env
-.git
+dist
+.env*
 npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Diretórios e Arquivos de Build/Test
+temp
+coverage
+*.tsbuildinfo
+generate-tests.js
+
+# Git
+.git
+.gitignore

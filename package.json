@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "node ./node_modules/vitest/vitest.mjs",
-    "start": "pnpm build && NODE_ENV=production node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
     "migrate": "NODE_ENV=development node dist/scripts/exec-migrations.js",
     "generate:tests": "node generate-tests.js",
     "dev": "pnpm exec tsx watch src/server.ts --dotenv_config_path=.env.dev",

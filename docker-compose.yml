@@ -36,9 +36,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - HOST=${HOST}
       - DATABASE_URL=${DATABASE_URL}
-      - USERNAME=${USERNAME}
     ports:
       - "127.0.0.1:3000:3000"
 

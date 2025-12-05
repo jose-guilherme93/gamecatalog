@@ -1,39 +1,31 @@
-FROM node:20-bookworm-slim AS builder
+
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN npm install -g pnpm
-
 COPY package.json pnpm-lock.yaml ./
 
-RUN pnpm install
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
 COPY . .
 
 RUN pnpm build
 
-FROM node:20-bookworm-slim AS runner
+# ----------------------------------------------------------------------
+
+
+FROM node:20-alpine AS production
+
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y netcat-openbsd dos2unix && \
-    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/node_modules /app/node_modules
 
-RUN npm install -g pnpm
 
-COPY package.json ./
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/
 
-RUN pnpm install --prod
-
-COPY --from=builder /app/dist ./dist
-
-COPY docker-entrypoint.sh /app/
-RUN dos2unix /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+COPY --from=builder /app/dist /app/dist
 
 EXPOSE 3000
 
-ENTRYPOINT [ "/app/docker-entrypoint.sh" ]
-
-CMD [ "pnpm", "start"]
+CMD [ "node", "dist/server.js" ]
