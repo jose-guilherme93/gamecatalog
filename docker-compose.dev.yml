@@ -31,7 +31,6 @@ services:
       - grafana-network
     environment:
       - PGHOST=postgres 
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTRES_PASSWORD}@postgres:${PGPORT}/${POSTGRES_DB}
       - PGHOST=${PGHOST}
       - PGPORT=${PGPORT}
       - POSTGRES_DB=${POSTGRES_DB}

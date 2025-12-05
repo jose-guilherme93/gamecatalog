@@ -1,27 +1,18 @@
 import * as dotenv from 'dotenv'
 import * as path from 'path'
-const env = process.env.NODE_ENV || 'development'
-const envFile = `.env.${env}`
-dotenv.config({ path: path.resolve(process.cwd(), envFile) })
-import { Client } from 'pg'
-import fs from 'node:fs'
-
+import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+
 import logger from './logger.js'
+import { pool } from '@/utils/connectDatabase.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const client = new Client({
-  host: process.env.PGHOST,
-  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : undefined,
-  database: process.env.POSTGRES_DB,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-})
-
 async function ensureMigrationsTable() {
-  await client.query(`CREATE TABLE IF NOT EXISTS migrations (
+  await pool.query(`CREATE TABLE IF NOT EXISTS migrations (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       run_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -30,14 +21,15 @@ async function ensureMigrationsTable() {
 }
 
 async function getExecutedMigrations() {
-  const res = await client.query('SELECT name FROM migrations')
+  const res = await pool.query('SELECT name FROM migrations')
   return res.rows.map((r) => r.name)
 }
 
 async function runMigrations() {
-  try {
-    await client.connect()
+  let migrationFailed = false
+  let client
 
+  try {
     await ensureMigrationsTable()
 
     const migrationsDir = path.join(__dirname, '../migrations')
@@ -56,22 +48,50 @@ async function runMigrations() {
       const filePath = path.join(migrationsDir, file)
       const sql = fs.readFileSync(filePath, 'utf-8')
 
+      client = await pool.connect()
       try {
+        await client.query('BEGIN')
         await client.query(sql)
         await client.query('INSERT INTO migrations(name) VALUES($1)', [file])
+        await client.query('COMMIT')
         logger.info(`Migration executed: ${file}`)
       } catch (err) {
+
+        await client.query('ROLLBACK')
         console.error(`Error running migration ${file}:`, err)
-        process.exit(1)
+        migrationFailed = true
+        break
+      } finally {
+        if (client) {
+          client.release()
+          client = null
+        }
+      }
+
+      if (migrationFailed) {
+        break
       }
     }
 
-    logger.info('All migrations executed!')
+    if (!migrationFailed) {
+      logger.info('All migrations executed!')
+    }
   } catch (err) {
-    console.error('Erro ao conectar ou executar migrations:', err)
+
+    console.error('Erro fatal ao conectar ou executar migrations:', err)
+    migrationFailed = true
   } finally {
-    await client.end()
+
+    await pool.end()
     logger.info('Conexão encerrada')
+
+    if (migrationFailed) {
+
+      process.exit(1)
+    } else {
+
+      process.exit(0)
+    }
   }
 }
 

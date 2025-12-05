@@ -19,3 +19,4 @@ insertMassive.js
 .flaskenv*
 !.env.project
 !.env.vault
+.secrets

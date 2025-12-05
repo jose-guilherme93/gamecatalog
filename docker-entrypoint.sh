@@ -1,13 +1,19 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 PGHOST=${PGHOST:-postgres}
 PGPORT=${PGPORT:-5432}
 
-echo "Waiting for postgres at $PGHOST:$PGPORT..."
+echo "⏳ Aguardando Postgres em $PGHOST:$PGPORT..."
 while ! nc -z "$PGHOST" "$PGPORT"; do
   sleep 0.5
 done
-echo "Database ready."
+echo "✅ Banco de dados pronto."
 
+echo "🚀 Executando migrations..."
+
+npx pnpm run migrate
+
+
+echo "🟢 Iniciando aplicação..."
 exec "$@"
