@@ -39,7 +39,7 @@ jobs:
           node-version: "22"
 
       - name: Test SSH access
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@v0.1.10
         with:
           port: 22
           host: ${{ env.HOST }}
@@ -55,7 +55,7 @@ jobs:
           port: 22
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
-          key: ${{ env.SSH_KEY }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             mkdir -p ~/gamecatalog
 
@@ -65,7 +65,7 @@ jobs:
           port: 22
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
-          key: ${{ env.SSH_KEY }}
+          key: ${{ secrets.SSH_KEY }}
           source: "."
           target: "gamecatalog"
 
@@ -75,7 +75,7 @@ jobs:
           port: 22
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
-          key: ${{ env.SSH_KEY }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             # 1. Configuração do NVM (se você usa nvm na VPS)
             export NVM_DIR="$HOME/.nvm"
