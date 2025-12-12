@@ -64,11 +64,13 @@ const seed = async () => {
       )
     }
 
+    await pool.end()
     logger.info('✅ Seed finalizado com sucesso!')
-    pool.end()
+    process.exit(0)
   } catch (err) {
     console.error('❌ Erro ao rodar seed:', err)
-    pool.end()
+    await pool.end()
+    process.exit(0)
   }
 }
 

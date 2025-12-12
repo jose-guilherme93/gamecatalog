@@ -6,10 +6,10 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
 import { Pool } from 'pg'
 import logger from '../scripts/logger.js'
 
+logger.info(process.env.DATABASE_URL)
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
-
 // Loga quando a conexão é estabelecida
 pool.on('connect', () => {
   logger.info('Database connected')

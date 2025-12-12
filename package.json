@@ -6,9 +6,9 @@
   "scripts": {
     "test": "node ./node_modules/vitest/vitest.mjs",
     "start": "NODE_ENV=production node dist/server.js",
-    "migrate": "NODE_ENV=dev node dist/scripts/exec-migrations.js",
-    "generate:tests": "node generate-tests.js",
-    "dev": "pnpm exec tsx watch src/server.ts --dotenv_config_path=.env.dev",
+    "migrate": "tsx src/scripts/exec-migrations.ts --dotenv_config_path=.env.dev",
+    "insert-data": "tsx src/scripts/seedDb.ts --dotenv_config_path=.env.dev",
+    "dev": "tsx watch src/server.ts --dotenv_config_path=.env.dev",
     "build": "tsc && tsc-alias && cp -R src/migrations dist/migrations"
   },
   "keywords": [],
