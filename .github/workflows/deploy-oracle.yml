@@ -36,35 +36,29 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22"
+          node-version: "24.11"
 
       - name: Test SSH access
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          port: 22
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
-          key: ${{ env.SSH_KEY }}
-          script: |
-            whoami
-            pwd
-
-      - name: Ensure project folder exists
         uses: appleboy/ssh-action@v1
         with:
           port: 22
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            mkdir -p ~/gamecatalog
+            whoami
+            pwd
+            mkdir ~/test-frontend-temp
+            echo "Test folder created. Now removing it..."
+            rm -rf ~/test-frontend-temp
+            echo "Test folder removed."
 
       - name: Copy files via SCP
         uses: appleboy/scp-action@v1
         with:
           port: 22
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           source: "."
           target: "gamecatalog"
@@ -73,39 +67,17 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           port: 22
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # 1. Configuração do NVM (se você usa nvm na VPS)
-            export NVM_DIR="$HOME/.nvm"
-            source "$NVM_DIR/nvm.sh"
-
-            # 2. Exportação das variáveis de ambiente para o Docker Compose
-            export POSTGRES_DB="${{ env.POSTGRES_DB }}"
-            export POSTGRES_USER="${{ env.POSTGRES_USER }}"
-            export POSTGRES_PASSWORD="${{ env.POSTGRES_PASSWORD }}"
-            export PGPORT="${{ env.PGPORT }}"
-            export DATABASE_URL="${{ env.DATABASE_URL }}"
-            export GF_SECURITY_ADMIN_USER="${{ env.GF_SECURITY_ADMIN_USER }}"
-            export GF_SECURITY_ADMIN_PASSWORD="${{ env.GF_SECURITY_ADMIN_PASSWORD }}"
-            export ABACATE_PAY_API="${{ env.ABACATE_PAY_API }}"
-
-            # 3. Comandos de Deploy
             cd ~/gamecatalog
 
-            echo "Stopping and removing old containers..."
+            echo "Gerando .env com todas variáveis disponíveis..."
+            printenv | grep -vE '^(HOME|PATH|PWD|SHLVL|_|SHELL|USER|LOGNAME|LANG|SSH_CLIENT|SSH_CONNECTION|XDG.*|DBUS.*)' > .env
+
+            echo "Conteúdo do .env:"
+            cat .env
+
             docker compose down
-
-            echo "Removing old images..."
-            docker image prune -af
-
-            echo "Building and starting new containers..."
-            docker network create grafana-network || true
-            docker compose -f grafana-compose.yml up -d
             docker compose up -d --build
-
-            echo "Cleaning unused resources..."
-            docker system prune -af
-
-            echo "✅ Server rebuilt and started successfully!"

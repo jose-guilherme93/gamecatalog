@@ -1,14 +1,10 @@
-
 services:
- 
   postgres:
     image: postgres:15-alpine
     container_name: gamecatalog_postgres
     restart: always
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -29,21 +25,15 @@ services:
     networks:
       - default
       - grafana-network
-    environment:
-      
-      - PGHOST=${PGHOST}
-      - PGPORT=${PGPORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_URL=${DATABASE_URL}
+    env_file:
+      - .env
     ports:
       - "127.0.0.1:3000:3000"
 
 volumes:
   pgdata:
     driver: local
-    
+
 networks:
   grafana-network:
     external: true

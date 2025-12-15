@@ -12,7 +12,7 @@ echo " Banco de dados pronto."
 
 echo " Executando migrations..."
 
-npx pnpm run migrate
+npx pnpm run migrate:prod
 
 
 echo "Iniciando aplicação..."
