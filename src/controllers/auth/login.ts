@@ -4,85 +4,86 @@ import jwt from 'jsonwebtoken'
 import type { Response, Request } from 'express'
 import { insertSession, searchUserByEmail } from '@/models/authModel.js'
 import { pool } from '@/utils/connectDatabase.js'
+import crypto from 'node:crypto'
 
 const userSchema = z.object({
-  email: z
-    .email('formato de email inválido')
-    .min(1)
-    .max(100),
-  password_hash:
-    z.string()
-      .min(8, 'a senha deve conter ao menos 8 caracteres')
-      .max(64, 'a senha deve conter no máximo 64 caracteres'),
+  email: z.email('formato de email inválido').max(100),
+  password_hash: z.string().min(8).max(64),
 })
 
 export const loginController = async (req: Request, res: Response) => {
-
   const { email, password_hash } = req.body
   const ip = req.get('x-forwarded-for') || req.socket.remoteAddress
   const browser = req.headers['user-agent']
 
   const parsed = userSchema.safeParse({ email, password_hash })
-  logger.info(`try to login with ${email} email`)
+  logger.info(`Tentativa de login: ${email}`)
 
   try {
     if (!parsed.success) {
-      logger.warn('Invalid input for login', parsed.error.issues)
-      return res.status(400).json({ message: 'Invalid email or password format', errors: parsed.error.message })
+      return res.status(400).json({
+        message: 'Formato de email ou senha inválido',
+        errors: parsed.error.issues,
+      })
     }
 
-    const responseDBSearch = await searchUserByEmail(parsed.data.email)
-    if (!responseDBSearch || password_hash !== responseDBSearch.password_hash) {
-      logger.warn('invalid email or password')
-      return res.status(404).json({ message: 'invalid email or password' })
+    const user = await searchUserByEmail(parsed.data.email)
+
+    if (!user || password_hash !== user.password_hash) {
+      logger.warn(`Falha de login para: ${email}`)
+      return res.status(401).json({ message: 'Email ou senha incorretos' })
     }
 
-    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    const sessionParameters = {
-      sessionId: crypto.randomUUID(),
-      userId: responseDBSearch.id,
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 dias
+    const sessionId = crypto.randomUUID()
+
+    const sessionToken = jwt.sign(
+      {
+        sub: sessionId,
+        userId: user.id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' },
+    )
+
+    // 2. Gerenciar sessões simultâneas (Max 5)
+    const searchActiveSessions = await pool.query(
+      'SELECT id FROM sessions WHERE user_id = $1 ORDER BY created_at ASC',
+      [user.id],
+    )
+
+    if (searchActiveSessions.rowCount! >= 5) {
+      const oldestSessionId = searchActiveSessions.rows[0].id
+      await pool.query('DELETE FROM sessions WHERE id = $1', [oldestSessionId])
+      logger.info(`Sessão antiga removida para o usuário ${user.id}`)
+    }
+
+    // 3. Inserir nova sessão no banco
+    await insertSession({
+      sessionId,
+      userId: user.id,
       browser: browser || 'Unknown',
       ip: ip || 'Unknown',
       expiresAt,
+    })
 
-    }
-    const sessionToken = jwt.sign({
-      sub: sessionParameters.sessionId,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    logger.info(`Login bem-sucedido: ${email}`)
 
-    }, process.env.JWT_SECRET!)
-
-    const searchActiveSessions = await pool.query('SELECT user_id FROM sessions WHERE user_id = $1', [responseDBSearch.id])
-    const MAX_SESSIONS = 5
-    if(searchActiveSessions.rowCount! >= MAX_SESSIONS) {
-      const oldestSessionQuery = `
-      SELECT id FROM sessions
-      WHERE user_id = $1
-      ORDER BY created_at ASC
-      LIMIT 1
-    `
-      const oldestSessionResult = await pool.query(oldestSessionQuery, [responseDBSearch.id])
-
-      if (oldestSessionResult.rowCount! > 0) {
-        const oldestSessionId = oldestSessionResult.rows[0].id
-        await pool.query('DELETE FROM sessions WHERE id = $1', [oldestSessionId])
-        logger.info(`Sessão mais antiga removida: ${oldestSessionId}`)
-      }
-    }
-    logger.info(`${searchActiveSessions.rowCount}`)
-    const newSession = await insertSession(sessionParameters)
-    logger.info(`token inserted successfully in: ${newSession.rows[0].created_at}`)
-    logger.info(`login success with: ${email}`)
+    // 4. Retorno COMPLETO para o frontend (Token + Dados do Usuário)
     return res.status(200).json({
       message: 'Login realizado com sucesso',
       sessionToken,
-
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || null, // Campos que o seu tipo 'User' no front exige
+        role: user.role || 'user',
+      },
     })
+
   } catch (error) {
-    logger.error(`error ao logar: ${error}`)
-
-    res.status(500).json({ message: 'Erro interno no servidor' })
-    throw error
+    logger.error(`Erro crítico no loginController: ${error}`)
+    return res.status(500).json({ message: 'Erro interno no servidor' })
   }
-
 }
