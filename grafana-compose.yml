@@ -4,7 +4,7 @@ services:
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml -validation.allow-structured-metadata=false
     networks:
-      - grafana-network
+      - grafana_network
     ports: 
       - '3100:3100'
 
@@ -19,8 +19,8 @@ services:
     depends_on:
       - loki
     networks:
-      - grafana-network
+      - grafana_network
 
 networks:
-  grafana-network:
+  grafana_network:
     external: true

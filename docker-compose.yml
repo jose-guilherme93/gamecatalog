@@ -23,17 +23,20 @@ services:
     container_name: gamecatalog_app
     restart: always
     networks:
+      - npm_network
       - default
-      - grafana-network
+      - grafana_network
     env_file:
       - .env
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
 
 volumes:
   pgdata:
     driver: local
 
 networks:
-  grafana-network:
+  grafana_network:
+    external: true
+  npm_network:
     external: true

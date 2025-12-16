@@ -9,49 +9,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     
-    env:
-      #postgres
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      PGPORT: ${{ secrets.PGPORT }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      #ssh
-      HOST: ${{ secrets.HOST }}
-      USERNAME: ${{ secrets.USERNAME }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
-
-      #grafana
-      GF_SECURITY_ADMIN_USER: ${{ secrets.GF_SECURITY_ADMIN_USER }}
-      GF_SECURITY_ADMIN_PASSWORD: ${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
-
-      #abacatepay
-      ABACATE_PAY_API: ${{ secrets.ABACATE_PAY_API }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "24.11"
-
-      - name: Test SSH access
-        uses: appleboy/ssh-action@v1
-        with:
-          port: 22
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            whoami
-            pwd
-            mkdir ~/test-frontend-temp
-            echo "Test folder created. Now removing it..."
-            rm -rf ~/test-frontend-temp
-            echo "Test folder removed."
 
       - name: Copy files via SCP
         uses: appleboy/scp-action@v1
@@ -60,7 +20,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: "."
+          source: ".,!.git,!.env*" # Bloqueia qualquer .env de ser enviado
           target: "gamecatalog"
 
       - name: Run remote SSH commands
@@ -70,14 +30,28 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
+          # Passamos os dados via argumento JSON para evitar que o plugin tente parsear como ENV
           script: |
             cd ~/gamecatalog
+            
+            # Limpeza radical do .env quebrado que está impedindo o deploy
+            find . -name ".env" -delete
+            
+            # Reconstrói o .env dinamicamente sem usar o parser do plugin
+            # Usamos o contexto de secrets do GitHub diretamente no comando 'cat'
+            cat << 'EOF' > .env
+            ${{ toJSON(secrets) }}
+            EOF
+            docker network create grafana_network || true
+            docker network create npm_network || true
+            # Converte o JSON em formato .env e remove as chaves de infraestrutura
+            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env
+            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^GITHUB_TOKEN=/d' .env
 
-            echo "Gerando .env com todas variáveis disponíveis..."
-            printenv | grep -vE '^(HOME|PATH|PWD|SHLVL|_|SHELL|USER|LOGNAME|LANG|SSH_CLIENT|SSH_CONNECTION|XDG.*|DBUS.*)' > .env
-
-            echo "Conteúdo do .env:"
-            cat .env
-
+            if [ -f grafana-compose.yml ]; then
+              docker compose -f grafana-compose.yml up -d
+            fi
+            
+            # Agora o Docker sobe com o .env limpo
             docker compose down
             docker compose up -d --build
