@@ -29,6 +29,29 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Adicionado: Cria a pasta na VPS caso ela não exista
+      - name: Ensure directory exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: mkdir -p ~/gamecatalog
+
+      # Adicionado: Copia os 3 arquivos para dentro da pasta gamecatalog
+      - name: Copy Infrastructure Files
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.yml,docker-entrypoint.sh,grafana-compose.yml"
+          target: "~/gamecatalog"
+          rm: false
+
       - name: Run remote SSH commands
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -41,7 +64,8 @@ jobs:
           script: |
             mkdir -p ~/gamecatalog && cd ~/gamecatalog
             
-            # 1. Atualizar o docker-compose.yml e docker-entrypoint.sh na VPS
+            # 1. Permissão para o entrypoint
+            chmod +x docker-entrypoint.sh
             
             # 2. Gerar o .env de produção (mantendo sua lógica de sed)
             cat << 'EOF' > .env
