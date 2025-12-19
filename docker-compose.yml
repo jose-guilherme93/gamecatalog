@@ -19,7 +19,7 @@ services:
       - default
 
   app:
-    build: .
+    image: joseguilherme93/gamecatalog:latest
     container_name: gamecatalog_app
     restart: always
     networks:

@@ -1,4 +1,4 @@
-name: "Deploy to VPS"
+name: "Deploy to Docker Hub and VPS"
 
 on:
   push:
@@ -6,52 +6,57 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy files via SCP
-        uses: appleboy/scp-action@v1
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          port: 22
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: ".,!.git,!.env*" # Bloqueia qualquer .env de ser enviado
-          target: "gamecatalog"
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Run remote SSH commands
-        uses: appleboy/ssh-action@v1
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
         with:
-          port: 22
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/gamecatalog:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run remote SSH commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          # Passamos os dados via argumento JSON para evitar que o plugin tente parsear como ENV
+          port: 22
+          sync: true 
+          debug: true
           script: |
-            cd ~/gamecatalog
+            mkdir -p ~/gamecatalog && cd ~/gamecatalog
             
-            # Limpeza radical do .env quebrado que está impedindo o deploy
-            find . -name ".env" -delete
+            # 1. Atualizar o docker-compose.yml e docker-entrypoint.sh na VPS
             
-            # Reconstrói o .env dinamicamente sem usar o parser do plugin
-            # Usamos o contexto de secrets do GitHub diretamente no comando 'cat'
+            # 2. Gerar o .env de produção (mantendo sua lógica de sed)
             cat << 'EOF' > .env
             ${{ toJSON(secrets) }}
             EOF
+            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env
+            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^DOCKERHUB_/d' .env
+
+            # 3. Docker Deploy
             docker network create grafana_network || true
             docker network create npm_network || true
-            # Converte o JSON em formato .env e remove as chaves de infraestrutura
-            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env
-            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^GITHUB_TOKEN=/d' .env
-
-            if [ -f grafana-compose.yml ]; then
-              docker compose -f grafana-compose.yml up -d
-            fi
             
-            # Agora o Docker sobe com o .env limpo
-            docker compose down
-            docker compose up -d --build
+            # Puxa a imagem nova do Docker Hub e recria os containers
+            docker compose pull
+            docker compose up -d
+            
+            # Limpeza de imagens antigas/órfãs para economizar disco na VPS
+            docker image prune -f
