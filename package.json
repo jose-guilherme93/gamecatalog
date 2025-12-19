@@ -7,7 +7,7 @@
     "test": "node ./node_modules/vitest/vitest.mjs",
     "start": "NODE_ENV=prod node dist/server.js",
     "migrate:dev": "tsx src/scripts/exec-migrations.ts --dotenv_config_path=.env.dev",
-    "migrate:prod": "NODE_ENV=prod node dist/scripts/exec-migrations.js",
+    "migrate:prod": "node dist/scripts/exec-migrations.js --dotenv_config_path=.env.prod",
     "insert-data": "tsx src/scripts/seedDb.ts --dotenv_config_path=.env.dev",
     "dev": "tsx watch src/server.ts --dotenv_config_path=.env.dev",
     "build": "tsc && tsc-alias && cp -R src/migrations dist/migrations"

@@ -1,9 +1,6 @@
-import * as dotenv from 'dotenv'
 import * as path from 'path'
 import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 import logger from './logger.js'
 import { pool } from '@/utils/connectDatabase.js'
