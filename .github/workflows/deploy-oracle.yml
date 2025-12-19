@@ -67,12 +67,12 @@ jobs:
             # 1. Permissão para o entrypoint
             chmod +x docker-entrypoint.sh
             
-            # 2. Gerar o .env de produção (mantendo sua lógica de sed)
-            cat << 'EOF' > .env
+            # 2. Gerar o .env.prod de produção
+            cat << 'EOF' > .env.prod
             ${{ toJSON(secrets) }}
             EOF
-            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env
-            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^DOCKERHUB_/d' .env
+            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env.prod
+            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^DOCKERHUB_/d' .env.prod
 
             # 3. Docker Deploy
             docker network create grafana_network || true
