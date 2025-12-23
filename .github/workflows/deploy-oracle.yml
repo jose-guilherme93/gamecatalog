@@ -48,7 +48,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: "docker-compose.yml,docker-entrypoint.sh,grafana-compose.yml"
+          source: "docker-compose.yml,docker-entrypoint.sh,grafana-compose.yml,local-config.yml"
           target: "~/gamecatalog"
           rm: false
 
