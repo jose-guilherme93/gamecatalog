@@ -40,9 +40,9 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            mkdir -p /home/${{ secrets.USERNAME }}/gamecatalog
-            chmod 755 /home/${{ secrets.USERNAME }}/gamecatalog
-          debug: true
+            if [ ! -d "/home/${{ secrets.USERNAME }}/gamecatalog" ]; then
+              mkdir -p /home/${{ secrets.USERNAME }}/gamecatalog
+            fi
 
       
       - name: Copy Infrastructure Files
