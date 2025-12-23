@@ -4,7 +4,7 @@ services:
     container_name: gamecatalog_postgres
     restart: always
     env_file:
-      - .env
+      - .env.prod
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -27,7 +27,7 @@ services:
       - default
       - grafana_network
     env_file:
-      - .env
+      - .env.prod
     ports:
       - "3000:3000"
 

@@ -2,7 +2,6 @@ import * as dotenv from 'dotenv'
 import * as path from 'path'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
-import { fileURLToPath } from 'node:url'
 
 import cors from 'cors'
 import express from 'express'
@@ -17,6 +16,7 @@ import logger from './scripts/logger.js'
 import globalLimiter from './utils/middlewares/globalRateLimiter.js'
 import authLimiter from './utils/middlewares/authRateLimiter.js'
 import notFoundRoute from './utils/middlewares/notFoundRoute.js'
+import docsRoutes from './routes/docsRoutes.js'
 
 const env = process.env.NODE_ENV || 'development'
 const envFile = `.env.${env}`
@@ -26,8 +26,6 @@ const PORT = Number(process.env.SERVER_PORT) || 3000
 
 const app = express()
 const httpServer = createServer(app)
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 app.use(cors({
   origin: 'https://v0-frontend-with-next-js-virid.vercel.app',
@@ -43,7 +41,6 @@ app.use(requestLogger)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true, limit: '10kb' }))
 app.use((req, res, next) => {req.io = io; next()}  )
-app.use('/docs', express.static(path.join(__dirname, 'docs')))
 
 app.use(globalLimiter)
 app.use('/auth', authLimiter)
@@ -53,7 +50,7 @@ app.use('/users', userRoutes)
 app.use('/games', gameRoutes)
 app.use('/reviews', reviewsRoutes)
 app.use('/payment', paymentRoutes)
-
+app.use('/docs', docsRoutes)
 app.get('/', (req, res) => res.status(200).json({
   message: 'Gamecatalog API',
   version: 'v0.1',
