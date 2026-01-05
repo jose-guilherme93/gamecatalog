@@ -5,7 +5,7 @@ import logger from '@/scripts/logger.js'
 
 import { createDonationPaymentDB, updateDonationPaymentDB } from '@/models/paymentModel.js'
 
-import { DonationBody, DonationPayload, donationSchema } from '@/types/payment.js'
+import { DonationPayload, donationSchema, abacateCreateResponseSchema, AbacateCreateResponse } from '@/types/payment.js'
 import { QueryResult } from 'pg'
 
 const token = process.env.ABACATE_PAY_API
@@ -39,11 +39,15 @@ export async function createDonationPayment(req: Request, res: Response) {
       throw new Error(`AbacatePay Error: ${abacateResponse.statusText}`)
     }
 
-    const abacateData: DonationPayload = await abacateResponse.json()
-    console.log(abacateData)
-    const donationData = {
+    const abacateJson = await abacateResponse.json()
+    const abacateParse = abacateCreateResponseSchema.safeParse(abacateJson)
+    const abacate: AbacateCreateResponse = abacateParse.success
+      ? abacateParse.data
+      : { data: { id: parsedBody.data.metadata?.externalId ?? 'default-id' } }
+
+    const donationData: DonationPayload = {
       id: crypto.randomUUID(),
-      externalId: abacateData.data.id,
+      externalId: abacate.data!.id,
       amount: parsedBody.data.amount,
       customer: parsedBody.data.customer,
       description: parsedBody.data.description,
@@ -59,8 +63,8 @@ export async function createDonationPayment(req: Request, res: Response) {
       logger.info(`Doação criada com sucesso: ${donationData.id}`)
       return res.status(201).json({
         message: 'Donation created',
-        id: abacateData.data.id,
-        pixCode: abacateData.data.pixCode, // Exemplo de retorno útil
+        id: abacate.data!.id,
+        pixCode: abacate.data!.pixCode, // Exemplo de retorno útil
       })
     }
 

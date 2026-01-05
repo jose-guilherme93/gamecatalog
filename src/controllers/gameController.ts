@@ -1,11 +1,10 @@
 import type { Request, Response } from 'express'
 import { createGame, getAllGamesDB, getGameById, updateGameDB } from '@/models/gameModel.js'
 import logger from '../scripts/logger.js'
-import type { Game } from '@/types/game.js'
+import { gameApiSearch, gameTitleSearchSchema, type Game } from '@/types/game.js'
 import type { QueryResult } from 'pg'
 import * as z from 'zod'
 import axios from 'axios'
-
 const GameParamsSchema = z.object({
   id: z.string({ message: 'ID inválido.' }),
 })
@@ -120,29 +119,36 @@ export const updateGameController = async (req: Request, res: Response) => {
 }
 
 export async function searchGame(req: Request, res: Response) {
-  const { title } = req.query
+
+  const gameTitle = req.query.title
+  logger.info(gameTitle)
+  const gameTitleParsed =  gameTitleSearchSchema.safeParse(gameTitle)
   const API_KEY = process.env.RAWG_API_KEY
 
-  try {
-    const { data } = await axios.get('https://api.rawg.io/api/games', {
-      params: {
-        key: API_KEY,
-        search: title,
-        page_size: 5,
-      },
-    })
+  if(!gameTitleParsed.success) {
+    res.json({ message: z.treeifyError(gameTitleParsed.error) })
+  } else {
 
-    const results = data.results.map(game => ({
-      title: game.name,
-      slug: game.slug,
-      cover_url: game.background_image,
-      released: game.released,
-    }))
+    try {
+      const { data } = await axios.get('https://api.rawg.io/api/games', {
+        params: {
+          key: API_KEY,
+          search: gameTitleParsed.data,
+          page_size: 5,
+        },
+      })
+      const results = data.results.map((game: gameApiSearch)  => ({
+        name: game.name,
+        slug: game.slug,
+        background_image: game.background_image,
+        released: game.released,
+      }))
 
-    return res.json(results)
-  } catch (error) {
-    return res.status(500).json({ error: 'Erro ao buscar jogos na API externa',
-      info: error,
-    })
+      return res.json(results)
+    } catch (error) {
+      return res.status(500).json({ error: 'Erro ao buscar jogos na API externa',
+        info: error,
+      })
+    }
   }
 }

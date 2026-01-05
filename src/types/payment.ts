@@ -29,3 +29,34 @@ const BodySchema = donationSchema.omit({
   platformFee: true,
   status: true,
 })
+
+export const abacateCreateResponseSchema = z.object({
+  data: z.object({
+    id: z.string(),
+    pixCode: z.string().optional(),
+    pixQrCode: z.object({
+      id: z.string().optional(),
+      customer: z.object({
+        id: z.string().optional(),
+        metadata: z.object({
+          name: z.string().optional(),
+          cellphone: z.string().optional(),
+          taxId: z.string().optional(),
+          email: z.string().optional(),
+          zipCode: z.string().optional(),
+        }).optional(),
+      }).optional(),
+      amount: z.number().optional(),
+      kind: z.string().optional(),
+      status: z.string().optional(),
+      metadata: z.object({ externalId: z.string().optional() }).optional(),
+    }).optional(),
+    payment: z.object({
+      amount: z.number().optional(),
+      fee: z.number().optional(),
+      method: z.string().optional(),
+    }).optional(),
+  }).optional(),
+})
+
+export type AbacateCreateResponse = z.infer<typeof abacateCreateResponseSchema>
