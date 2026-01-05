@@ -141,6 +141,8 @@ export async function searchGame(req: Request, res: Response) {
 
     return res.json(results)
   } catch (error) {
-    return res.status(500).json({ error: 'Erro ao buscar jogos na API externa' })
+    return res.status(500).json({ error: 'Erro ao buscar jogos na API externa',
+      info: error,
+    })
   }
 }
