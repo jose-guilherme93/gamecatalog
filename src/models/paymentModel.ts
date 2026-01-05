@@ -8,3 +8,30 @@ export async function  createDonationPaymentDB(data: DonationPayload) {
         RETURNING *`, [data.id, data.metadata!.externalId, data.amount, data.platformFee, data.customer, data.description, 'PENDING'])
   return query
 }
+
+export async function updateDonationPaymentDB(
+  abacateId: string | null,
+  metadataExternalId: string | null,
+  pixId: string | null,
+  status: string | null,
+  platformFee: number | null,
+  pixPayload: unknown | null,
+  customerData: unknown | null,
+  abacatepayCustomerId: string | null,
+) {
+  const query = await pool.query(
+    `UPDATE donations SET
+        status = COALESCE($1, status),
+        pix_id = COALESCE($2, pix_id),
+        platform_fee = COALESCE($3, platform_fee),
+        pix_payload = COALESCE($4, pix_payload),
+        customer_data = COALESCE($5, customer_data),
+        abacatepay_customer_id = COALESCE($6, abacatepay_customer_id),
+        updated_at = NOW()
+      WHERE external_id = $7 OR external_id = $8
+      RETURNING *`,
+    [status, pixId, platformFee, pixPayload, customerData, abacatepayCustomerId, abacateId, metadataExternalId],
+  )
+
+  return query
+}

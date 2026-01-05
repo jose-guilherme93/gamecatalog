@@ -6,7 +6,6 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) })
 import { Pool } from 'pg'
 import logger from '../scripts/logger.js'
 
-logger.info(process.env.DATABASE_URL)
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
