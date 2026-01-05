@@ -84,6 +84,6 @@ jobs:
             # Puxa a imagem nova do Docker Hub e recria os containers
             docker compose pull
             docker compose up -d
-            
+            docker compose -f grafana-compose.yml up -d
             # Limpeza de imagens antigas/órfãs para economizar disco na VPS
             docker image prune -f
