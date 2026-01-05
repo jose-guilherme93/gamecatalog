@@ -11,6 +11,7 @@
     "insert-data": "tsx src/scripts/seedDb.ts --dotenv_config_path=.env.dev",
     "dev": "tsx watch src/server.ts --dotenv_config_path=.env.dev",
     "build": "tsc && tsc-alias && cp -R src/migrations dist/migrations",
+    "type-check": "tsc --noEmit",
     "prepare": "husky"
   },
   "keywords": [],
