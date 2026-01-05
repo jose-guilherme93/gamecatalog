@@ -1,0 +1,18 @@
+
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Iniciando verificações de segurança (Build & Type-check)..."
+
+# Executa a checagem do TypeScript sem gerar arquivos de saída
+pnpm exec tsc --noEmit && \
+# Executa o build do projeto
+pnpm build
+
+# Captura o status de saída
+if [ $? -ne 0 ]; then
+  echo "❌ Erro: O commit foi abortado devido a falhas no build ou TypeScript."
+  exit 1
+fi
+
+echo "✅ Verificações concluídas com sucesso. Criando commit..."
