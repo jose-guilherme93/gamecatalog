@@ -11,6 +11,8 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    env_file:
+      - .env.prod
     ports:
       - '9090:3000'
     environment:
