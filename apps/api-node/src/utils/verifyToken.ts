@@ -12,4 +12,3 @@ export const verifyToken = async (code: number) => {
   }
 
 }
-  

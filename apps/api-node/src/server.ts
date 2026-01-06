@@ -1,5 +1,5 @@
-import * as dotenv from 'dotenv'
-import * as path from 'path'
+import './env'
+
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
 
@@ -17,10 +17,6 @@ import globalLimiter from './utils/middlewares/globalRateLimiter.js'
 import authLimiter from './utils/middlewares/authRateLimiter.js'
 import notFoundRoute from './utils/middlewares/notFoundRoute.js'
 import docsRoutes from './routes/docsRoutes.js'
-
-const env = process.env.NODE_ENV || 'development'
-const envFile = `.env.${env}`
-dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true })
 
 const PORT = Number(process.env.SERVER_PORT) || 3000
 

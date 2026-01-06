@@ -11,7 +11,7 @@ export default defineConfig([
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: './apps/api-node/tsconfig.json',
       },
       globals: globals.node,
     },

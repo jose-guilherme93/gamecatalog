@@ -1,11 +1,6 @@
-import * as dotenv from 'dotenv'
-import * as path from 'path'
-const env = process.env.NODE_ENV || 'dev'
-const envFile = `.env.${env}`
-dotenv.config({ path: path.resolve(process.cwd(), envFile) })
+import '@/env.js'
 import { Pool } from 'pg'
 import logger from '../scripts/logger.js'
-
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })

@@ -3,7 +3,7 @@
   "compilerOptions": {
    
      "lib": ["ES2024"],
-    "module": "nodenext",
+    "module": "preserve",
     "target": "esnext",
     
 
@@ -41,7 +41,7 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "moduleResolution": "nodenext",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
 
     //Build
@@ -50,6 +50,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-   "include": ["./src/**/*.ts", "./src/migrations", "src/controllers/userController.js", "src/controllers/auth/recovery.ts"],
+   "include": ["./src/**/*.ts"],
   "exclude": ["node_modules",  "./dist"]
 }
