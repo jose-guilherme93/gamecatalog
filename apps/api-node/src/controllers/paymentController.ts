@@ -1,8 +1,7 @@
 import { type Response, type Request } from 'express'
 import { z } from 'zod'
-
 import logger from '@/scripts/logger.js'
-
+import { rdb } from '@/utils/redis.js'
 import { createDonationPaymentDB, updateDonationPaymentDB } from '@/models/paymentModel.js'
 
 import { DonationPayload, donationSchema, abacateCreateResponseSchema, AbacateCreateResponse } from '@/types/payment.js'
@@ -56,7 +55,7 @@ export async function createDonationPayment(req: Request, res: Response) {
       metadata: parsedBody.data.metadata,
       expiresIn: 123,
     }
-
+    await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
     const queryDB: QueryResult = await createDonationPaymentDB(donationData)
 
     if (queryDB.rowCount! > 0) {
@@ -64,7 +63,7 @@ export async function createDonationPayment(req: Request, res: Response) {
       return res.status(201).json({
         message: 'Donation created',
         id: abacate.data!.id,
-        pixCode: abacate.data!.pixCode, // Exemplo de retorno útil
+        pixCode: abacate.data!.pixCode, 
       })
     }
 

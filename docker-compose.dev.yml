@@ -23,6 +23,23 @@ services:
       start_period: 10s
     networks:
       - default
+  redis:
+      image: redis:alpine
+      container_name: gamecatalog-redis
+      ports:
+        - "127.0.0.1:6379:6379"
+      mem_limit: 128m
+      mem_reservation: 64m
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+      # Limita memória para simular sua VPS de 1GB
+      deploy:
+        resources:
+          limits:
+            memory: 128M
 
 volumes:
   pgdata:

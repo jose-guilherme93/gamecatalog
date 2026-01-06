@@ -8,8 +8,8 @@
     "api:prod": "NODE_ENV=prod pnpm --filter @gamecatalog/api start",
     "api:act": "NODE_ENV=act pnpm --filter @gamecatalog/api dev",
     "api:migrate:dev": "NODE_ENV=dev pnpm --filter @gamecatalog/api migrate:dev",
-    "api:build":"NODE_ENV=prod pnpm --filter @gamecatalog/api build",
-    "api:type-check":"NODE_ENV=prod pnpm --filter @gamecatalog/api type-check",
+    "api:build": "NODE_ENV=prod pnpm --filter @gamecatalog/api build",
+    "api:type-check": "NODE_ENV=prod pnpm --filter @gamecatalog/api type-check",
     "dev": "pnpm worker:dev & pnpm api:dev",
     "worker:dev": "NODE_ENV=dev cd apps/worker-donations && go run main.go",
     "prepare": "husky"
@@ -17,5 +17,8 @@
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
     "husky": "^9.1.7"
+  },
+  "dependencies": {
+    "redis": "^5.10.0"
   }
 }

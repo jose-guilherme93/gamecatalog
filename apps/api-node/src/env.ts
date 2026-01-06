@@ -3,7 +3,6 @@ import { resolve } from 'node:path'
 import { z } from 'zod'
 import logger from './scripts/logger'
 
-
 const currentEnv = process.env.NODE_ENV || 'dev'
 
 
@@ -24,6 +23,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['dev', 'prod', 'test', 'act']).default('dev'),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().url(),
+  
 })
 
 const _env = envSchema.safeParse(process.env)
