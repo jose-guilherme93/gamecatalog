@@ -4,8 +4,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: gamecatalog_postgres
-    env_file:
-      - ./.env.dev
+    
     restart: always
     environment:
       - POSTGRES_DB=gamecatalog-db
@@ -16,10 +15,10 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
       start_period: 10s
     networks:
       - default

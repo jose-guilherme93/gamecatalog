@@ -8,7 +8,6 @@ import { DonationPayload, donationSchema, abacateCreateResponseSchema, AbacateCr
 import { QueryResult } from 'pg'
 
 const token = process.env.ABACATE_PAY_API
-
 export async function createDonationPayment(req: Request, res: Response) {
   logger.info('Iniciando criação de doação PIX...')
 

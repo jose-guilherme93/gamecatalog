@@ -1,6 +1,4 @@
 import { createClient, RedisClientType } from 'redis'
-import '@/env.js'
-
 export const rdb: RedisClientType = createClient({
   url: process.env.REDIS_URL!
 })
