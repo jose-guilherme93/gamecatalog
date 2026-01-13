@@ -1,7 +1,6 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-   
      "lib": ["ES2024"],
     "module": "preserve",
     "target": "esnext",
@@ -11,6 +10,7 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+    
 
     // Migration & Safety
     "allowJs": true,
@@ -21,7 +21,7 @@
       "@/*": ["*"]
     },
  
-
+    
 
   // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,

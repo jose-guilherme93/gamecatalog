@@ -9,7 +9,7 @@
     "migrate:dev": "tsx src/scripts/exec-migrations.ts",
     "migrate:prod": "node dist/scripts/exec-migrations.js",
     "insert-data": "tsx src/scripts/seedDb.ts",
-    "dev": "tsx watch src/server.ts",
+    "dev": "infisical run tsx watch src/server.ts",
     "build": "tsc && tsc-alias && cp -R src/migrations dist/migrations",
     "type-check": "tsc --noEmit"
   },
@@ -20,8 +20,8 @@
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

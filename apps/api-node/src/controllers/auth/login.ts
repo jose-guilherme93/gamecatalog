@@ -5,6 +5,7 @@ import type { Response, Request } from 'express'
 import { insertSession, searchUserByEmail } from '@/models/authModel.js'
 import { pool } from '@/utils/connectDatabase.js'
 import crypto from 'node:crypto'
+import bcrypt from 'bcrypt'
 
 const userSchema = z.object({
   email: z.email('formato de email inválido').max(100),
@@ -28,8 +29,20 @@ export const loginController = async (req: Request, res: Response) => {
     }
 
     const user = await searchUserByEmail(parsed.data.email)
+    
+    if (!user) {
+      logger.warn(`Falha de login para: ${email}`)
+      return res.status(401).json({ message: 'Email ou senha incorretos' })
+    }
 
-    if (!user || password_hash !== user.password_hash) {
+    if (!user.password_hash) {
+      logger.warn(`Falha de login para: ${email}`)
+      return res.status(401).json({ message: 'Email ou senha incorretos' })
+    }
+
+    const isPasswordValid = await bcrypt.compare(password_hash, String(user.password_hash))
+    
+    if (!isPasswordValid) {
       logger.warn(`Falha de login para: ${email}`)
       return res.status(401).json({ message: 'Email ou senha incorretos' })
     }
@@ -46,7 +59,6 @@ export const loginController = async (req: Request, res: Response) => {
       process.env.JWT_SECRET!,
       { expiresIn: '1h' },
     )
-
     // 2. Gerenciar sessões simultâneas (Max 5)
     const searchActiveSessions = await pool.query(
       'SELECT id FROM sessions WHERE user_id = $1 ORDER BY created_at ASC',
@@ -77,7 +89,7 @@ export const loginController = async (req: Request, res: Response) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name || null, // Campos que o seu tipo 'User' no front exige
+        name: user.name || null,
         role: user.role || 'user',
       },
     })

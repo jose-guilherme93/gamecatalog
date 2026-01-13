@@ -2,6 +2,7 @@ import logger from '@/scripts/logger.js'
 import type { Response, Request } from 'express'
 import { randomUUID } from 'node:crypto'
 import * as z from 'zod'
+import bcrypt from 'bcrypt'
 
 import type { Session } from '@/types/session.js'
 import type { QueryResult } from 'pg'
@@ -47,11 +48,14 @@ export const createUserController = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'dados incompletos: username ou password_hash faltando' })
     }
 
+    // Hash the provided password before saving
+    const hashedPassword = await bcrypt.hash(password_hash, 10)
+
     const newUser: User = {
       id: randomUUID(),
       username,
       email: parsedEmail,
-      password_hash,
+      password_hash: hashedPassword,
       avatar,
     }
 
