@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node ./node_modules/vitest/vitest.mjs",
+    "test": "vitest",
     "start": "node dist/server.js",
     "migrate:dev": "tsx src/scripts/exec-migrations.ts",
     "migrate:prod": "node dist/scripts/exec-migrations.js",
