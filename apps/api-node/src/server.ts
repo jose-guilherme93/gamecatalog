@@ -24,7 +24,7 @@ const app = express()
 const httpServer = createServer(app)
 
 app.use(cors({
-  origin: 'https://v0-frontend-with-next-js-virid.vercel.app',
+  origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))

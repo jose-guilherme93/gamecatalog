@@ -55,6 +55,20 @@ export async function getReviewByIdDB(parsedReviewGameId: string): Promise<Revie
   }
 }
 
+export async function getReviewsByUserIdDB(user_id: string): Promise<Review[] | null> {
+  const query = `
+    SELECT * FROM reviews
+    WHERE user_id = $1;
+  `
+  try {
+    const response = await pool.query(query, [user_id])
+    return response.rows || null
+  } catch (error) {
+    logger.error('Erro ao buscar reviews por user ID:', error)
+    throw error
+  }
+}
+
 export async function deleteReviewDB(params: { game_id: string; user_id: string }) {
   const query = `
     DELETE FROM reviews

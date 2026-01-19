@@ -3,9 +3,12 @@ import {
   createReviewController,
   deleteReviewController,
   updateReviewController,
-  getReviewByGameIdController } from '@/controllers/reviewControler.js'
+  getReviewByGameIdController,
+  getReviewsByUserIdController,
+} from '@/controllers/reviewControler.js'
 const router: Router = express.Router()
 
+router.get('/user/:user_id', getReviewsByUserIdController)
 router.get('/:game_id', getReviewByGameIdController)
 router.post('/', createReviewController)
 router.delete('/:user_id/:game_id', deleteReviewController)

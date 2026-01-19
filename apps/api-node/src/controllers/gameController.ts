@@ -121,7 +121,6 @@ export const updateGameController = async (req: Request, res: Response) => {
 export async function searchGame(req: Request, res: Response) {
 
   const gameTitle = req.query.title
-  logger.info(gameTitle)
   const gameTitleParsed =  gameTitleSearchSchema.safeParse(gameTitle)
   const API_KEY = process.env.RAWG_API_KEY
 
@@ -137,6 +136,7 @@ export async function searchGame(req: Request, res: Response) {
           page_size: 5,
         },
       })
+      logger.info(data)
       const results = data.results.map((game: gameApiSearch)  => ({
         name: game.name,
         slug: game.slug,

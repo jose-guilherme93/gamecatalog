@@ -20,3 +20,6 @@ insertMassive.js
 !.env.project
 !.env.vault
 .secrets
+.next/
+out/
+next-env.d.ts

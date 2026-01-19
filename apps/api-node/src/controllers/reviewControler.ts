@@ -1,6 +1,6 @@
 import type { Response, Request } from 'express'
 import logger from '@/scripts/logger.js'
-import { checkExistingReview, createReviewDB, deleteReviewDB, getReviewByIdDB, updateReviewDB } from '../models/reviewModel.js'
+import { checkExistingReview, createReviewDB, deleteReviewDB, getReviewByIdDB, getReviewsByUserIdDB, updateReviewDB } from '../models/reviewModel.js'
 import * as zod from 'zod'
 import type { Review } from '@/types/review.js'
 
@@ -25,13 +25,31 @@ const updateReviewBodyParamsSchema = zod.object({
   score: zod.number().min(0).max(10).optional(),
   review_text: zod.string().min(1).max(5000).optional(),
 })
-const reviewIdSchema = zod.string()
+const userIdSchema = zod.string().uuid()
+
+export async function getReviewsByUserIdController(req: Request, res: Response) {
+  logger.info('buscando review por user_id...')
+  const parseUserId = userIdSchema.safeParse(req.params.user_id)
+
+  if (!parseUserId.success) {
+    logger.error('Invalid user_id format')
+    return res.status(400).json({ message: 'Invalid user_id format' })
+  }
+
+  const searchReview = await getReviewsByUserIdDB(parseUserId.data!)
+  res.status(200).json({ message: 'Reviews encontrados com sucesso', reviews: searchReview })
+}
 
 export async function getReviewByGameIdController(req: Request, res: Response) {
   logger.info('buscando review por game_id...')
-  const parseReviewGameId = reviewIdSchema.safeParse(req.params.game_id)
-
-  const searchReview = await getReviewByIdDB(parseReviewGameId.data!)
+  const parseReviewGameId = req.params.game_id
+  const gameIdSchema = zod.string().min(1)
+  const parsedGameId = gameIdSchema.safeParse(parseReviewGameId)
+  if (!parsedGameId.success) {
+    logger.error('Invalid game_id format')
+    return res.status(400).json({ message: 'Invalid game_id format' })
+  }
+  const searchReview = await getReviewByIdDB(parsedGameId.data)
   res.status(200).json({ message: 'Review encontrado com sucesso', review: searchReview })
 }
 

@@ -9,7 +9,7 @@ import bcrypt from 'bcrypt'
 
 const userSchema = z.object({
   email: z.email('formato de email inválido').max(100),
-  password_hash: z.string().min(8).max(64),
+  password_hash: z.string().max(64),
 })
 
 export const loginController = async (req: Request, res: Response) => {
@@ -40,7 +40,7 @@ export const loginController = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Email ou senha incorretos' })
     }
 
-    const isPasswordValid = await bcrypt.compare(password_hash, String(user.password_hash))
+    const isPasswordValid = bcrypt.compare(password_hash.toString(), user.password_hash.toString())
     
     if (!isPasswordValid) {
       logger.warn(`Falha de login para: ${email}`)
