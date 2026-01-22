@@ -116,3 +116,10 @@ export const updateGameDB = async (id: string, updateGameData: UpdateGameData) =
 
   return responseQuery
 }
+
+export const searchGamesByTitleDB = async (title: string): Promise<Game[]> => {
+  const query = 'SELECT * FROM games WHERE LOWER(title) LIKE LOWER($1)'
+  const searchPattern = `%${title}%`
+  const result: QueryResult<Game> = await pool.query(query, [searchPattern])
+  return result.rows
+}

@@ -10,7 +10,7 @@ export default function SearchPage() {
     e.preventDefault()
 
     try {
-      const res = await fetch(`/games/search-game?title=${query}`, {method: 'POST'})
+      const res = await fetch(`http://localhost:3000/games/search-game?title=${query}`, {method: 'POST'})
 
       if (res.ok) {
         const data = await res.json()

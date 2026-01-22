@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express'
-import { createGame, getAllGamesDB, getGameById, updateGameDB } from '@/models/gameModel.js'
+import { createGame, getAllGamesDB, getGameById, searchGamesByTitleDB, updateGameDB } from '@/models/gameModel.js'
 import logger from '../scripts/logger.js'
 import { gameApiSearch, gameTitleSearchSchema, type Game } from '@/types/game.js'
 import type { QueryResult } from 'pg'
@@ -127,26 +127,61 @@ export async function searchGame(req: Request, res: Response) {
   if(!gameTitleParsed.success) {
     res.json({ message: z.treeifyError(gameTitleParsed.error) })
   } else {
+    const titleToSearch = gameTitleParsed.data
 
     try {
-      const { data } = await axios.get('https://api.rawg.io/api/games', {
+      // Search local database
+      const dbGamesPromise = searchGamesByTitleDB(titleToSearch)
+
+      // Search external RAWG API
+      const rawgApiPromise = axios.get('https://api.rawg.io/api/games', {
         params: {
           key: API_KEY,
-          search: gameTitleParsed.data,
-          page_size: 5,
+          search: titleToSearch,
+          page_size: 10,
         },
       })
-      logger.info(data)
-      const results = data.results.map((game: gameApiSearch)  => ({
-        name: game.name,
-        slug: game.slug,
-        background_image: game.background_image,
-        released: game.released,
-      }))
 
-      return res.json(results)
+      const [dbGamesResult, rawgApiResult] = await Promise.allSettled([dbGamesPromise, rawgApiPromise])
+
+      let combinedResults: { id: string, title: string, slug: string, cover_url: string, released?: string }[] = []
+
+      // Process database results
+      if (dbGamesResult.status === 'fulfilled') {
+        dbGamesResult.value.forEach(game => {
+          combinedResults.push({
+            id: game.id,
+            title: game.title,
+            slug: game.slug,
+            cover_url: game.cover_url,
+            released: game.first_release_date ? new Date(game.first_release_date).toISOString().split('T')[0] : undefined,
+          })
+        })
+      } else {
+        logger.error('Error searching local database:', dbGamesResult.reason)
+      }
+
+      // Process RAWG API results
+      if (rawgApiResult.status === 'fulfilled') {
+        rawgApiResult.value.data.results.forEach((game: gameApiSearch) => {
+          // Check for duplicates based on slug or title
+          if (!combinedResults.some(dbGame => dbGame.slug === game.slug || dbGame.title === game.name)) {
+            combinedResults.push({
+              id: game.id.toString(), // Use game id as a unique identifier for API games
+              title: game.name,
+              slug: game.slug,
+              cover_url: game.background_image,
+              released: game.released,
+            })
+          }
+        })
+      } else {
+        logger.error('Error searching external RAWG API:', rawgApiResult.reason)
+      }
+
+      return res.json(combinedResults)
     } catch (error) {
-      return res.status(500).json({ error: 'Erro ao buscar jogos na API externa',
+      return res.status(500).json({ error: 'Erro ao buscar jogos',
         info: error,
       })
     }

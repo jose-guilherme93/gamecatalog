@@ -4,9 +4,9 @@ import { createGameController, getAllGames, getGameByIdController, searchGame, u
 
 const router: Router = express.Router()
 
+router.get('/search-game', searchGame)
 router.get('/:id', getGameByIdController)
 router.get('/', getAllGames)
 router.post('/', createGameController)
 router.put('/:id', updateGameController)
-router.post('/search-game', searchGame)
 export default router

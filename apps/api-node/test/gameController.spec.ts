@@ -35,7 +35,7 @@ describe('gameController', () => {
     const axios = await import('axios') as any
     axios.get.mockResolvedValue({ data: { results: [{ name: 'Game', slug: 'g', background_image: '', released: '2020' }] } })
 
-    const req: any = { query: { title: 'z' } }
+    const req: any = { query: { q: 'z' } }
     const res = mockRes()
     await gameCtrl.searchGame(req, res)
 

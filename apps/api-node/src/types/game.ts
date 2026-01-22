@@ -16,10 +16,11 @@ export const gameTitleSearchSchema = z.string().min(3, 'forneça pelo menos 3 le
 export type gameTitleSearch = z.infer<typeof gameTitleSearchSchema>
 
 export const gameApiSearchSchema = z.object({
+  id: z.number(),
   name: z.string(),
-  slug: z.slugify(),
+  slug: z.string(),
   background_image: z.string(),
-  released: z.date(),
+  released: z.string().nullable(),
 })
 
 export type gameApiSearch = z.infer< typeof gameApiSearchSchema>
