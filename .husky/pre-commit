@@ -1,7 +1,16 @@
 #!/usr/bin/env sh
 
+# Aborta o script em caso de erro em qualquer comando
+set -e
+
+# Carrega o NVM (necessário se o ambiente de execução for restrito)
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-npx pnpm api:type-check && npx pnpm api:build
+echo "🔍 Iniciando verificações pré-commit..."
+
+npx pnpm api:type-check
+npx pnpm api:build
 pnpm test
+
+echo "✅ Tudo limpo! Realizando commit..."

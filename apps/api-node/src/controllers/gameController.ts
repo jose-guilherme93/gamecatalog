@@ -144,7 +144,7 @@ export async function searchGame(req: Request, res: Response) {
 
       const [dbGamesResult, rawgApiResult] = await Promise.allSettled([dbGamesPromise, rawgApiPromise])
 
-      let combinedResults: { id: string, title: string, slug: string, cover_url: string, released?: string }[] = []
+      let combinedResults: { id: string, title: string, slug: string, cover_url: string, released: string }[] = []
 
       // Process database results
       if (dbGamesResult.status === 'fulfilled') {
@@ -153,8 +153,8 @@ export async function searchGame(req: Request, res: Response) {
             id: game.id,
             title: game.title,
             slug: game.slug,
-            cover_url: game.cover_url,
-            released: game.first_release_date ? new Date(game.first_release_date).toISOString().split('T')[0] : undefined,
+            cover_url: game.cover_url || '', // Ensure cover_url is always a string
+            released: game.first_release_date ? '': ''
           })
         })
       } else {
@@ -171,7 +171,7 @@ export async function searchGame(req: Request, res: Response) {
               title: game.name,
               slug: game.slug,
               cover_url: game.background_image,
-              released: game.released,
+              released: game.released!,
             })
           }
         })

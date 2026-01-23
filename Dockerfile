@@ -1,38 +1,31 @@
-# ----------------------------
-# Stage 1: Build
-# ----------------------------
-FROM node:20-alpine AS builder
+# Estágio Base
+FROM node:20-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
+# Estágio de Dependências (Cache)
+FROM base AS dependencies
 WORKDIR /app
-
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
+# Estágio de Build
+FROM base AS build
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-# ----------------------------
-# Stage 2: Production
-
-# ----------------------------
-FROM node:20-alpine AS production
-
+# Estágio Final (Produção)
+FROM base AS deploy
 WORKDIR /app
-
-# 1. Copia os arquivos de dependências
-COPY package.json pnpm-lock.yaml ./ 
-RUN corepack enable pnpm && pnpm install --prod --frozen-lockfile --ignore-scripts
-
-# 2. Copia o código compilado do stage anterior
-COPY --from=builder /app/dist ./dist
-
-COPY docker-entrypoint.sh ./
-RUN chmod +x ./docker-entrypoint.sh 
+ENV NODE_ENV=production
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/migrations ./src/migrations
 
 EXPOSE 3000
-
-
-ENTRYPOINT ["./docker-entrypoint.sh"]
-
-
-CMD ["node", "dist/server.js"]
+CMD [ "pnpm", "start" ]

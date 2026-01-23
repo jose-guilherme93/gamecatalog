@@ -72,6 +72,8 @@ jobs:
             
             # Ajuste de permissões
             chmod +x docker-entrypoint.sh
+            # Renomeia o arquivo de ambiente para o padrão do Docker Compose
+            mv .env.prod .env
             
             # Setup de Redes
             docker network create grafana_network 2>/dev/null || true

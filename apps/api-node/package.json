@@ -6,8 +6,8 @@
   "scripts": {
     "test": "vitest",
     "start": "node dist/server.js",
-    "migrate:dev": "tsx src/scripts/exec-migrations.ts",
-    "migrate:prod": "node dist/scripts/exec-migrations.js",
+    "migrate:dev": "infisical run --env=dev src/scripts/exec-migrations.ts",
+    "migrate:prod": "infisical run --env=prod node dist/scripts/exec-migrations.js",
     "insert-data": "tsx src/scripts/seedDb.ts",
     "dev": "infisical run tsx watch src/server.ts",
     "build": "tsc && tsc-alias && cp -R src/migrations dist/migrations",
