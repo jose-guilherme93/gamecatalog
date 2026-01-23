@@ -32,11 +32,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Instalar Infisical CLI
-      - name: Install Infisical CLI
+      - name: Export Secrets do Infisical
+        env:
+          INFISICAL_API_URL: "https://app.infisical.com/api"
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
         run: |
-          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
-          sudo apt-get update && sudo apt-get install -y infisical
+          # O CLI detecta as variáveis de ambiente acima e autentica automaticamente
+          infisical export --env=prod --format=dotenv > .env.prod
 
       # 2. Buscar Segredos do Infisical e gerar .env
       - name: Fetch Secrets from Infisical
