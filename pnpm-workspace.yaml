@@ -2,6 +2,3 @@ ignoredBuiltDependencies:
   - unrs-resolver
 packages:
   - 'apps/*'
-  - 'api-node' 
-  - 'worker-donations'
-  - 'web'
