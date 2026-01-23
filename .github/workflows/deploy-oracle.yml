@@ -35,7 +35,7 @@ jobs:
       # 1. Instalar Infisical CLI
       - name: Install Infisical CLI
         run: |
-          curl -1sLf \'https://artifacts-cli.infisical.com/setup.deb.sh' \ | sudo -E bash
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
           sudo apt-get update && sudo apt-get install -y infisical
 
       # 2. Buscar Segredos do Infisical e gerar .env
