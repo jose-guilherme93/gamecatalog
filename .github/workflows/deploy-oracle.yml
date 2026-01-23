@@ -32,58 +32,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Adicionado: Cria a pasta na VPS caso ela não exista
-      - name: Ensure directory exists
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            if [ ! -d "/home/${{ secrets.USERNAME }}/gamecatalog" ]; then
-              mkdir -p /home/${{ secrets.USERNAME }}/gamecatalog
-            fi
+      # 1. Instalar Infisical CLI
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
+          sudo apt-get update && sudo apt-get install -y infisical
 
-      
+      # 2. Buscar Segredos do Infisical e gerar .env
+      - name: Fetch Secrets from Infisical
+        shell: bash
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: |
+          infisical login --client-id=$INFISICAL_CLIENT_ID --client-secret=$INFISICAL_CLIENT_SECRET
+          # Exporta apenas o necessário para o arquivo que será enviado à VPS
+          infisical export --env=prod --format=dotenv > .env.prod
+      # 3. Enviar arquivos de infra + .env.prod para a VPS
       - name: Copy Infrastructure Files
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: "docker-compose.yml,docker-entrypoint.sh,grafana-compose.yml,local-config.yml"
+          # Incluímos o .env.prod gerado dinamicamente no passo anterior
+          source: "docker-compose.yml,docker-entrypoint.sh,grafana-compose.yml,local-config.yml,.env.prod"
           target: "~/gamecatalog"
           rm: false
 
+      # 4. Comandos Remotos via SSH
       - name: Run remote SSH commands
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: 22
-          sync: true 
-          debug: true
           script: |
             mkdir -p ~/gamecatalog && cd ~/gamecatalog
             
-            # 1. Permissão para o entrypoint
+            # Ajuste de permissões
             chmod +x docker-entrypoint.sh
+            # Renomeia o arquivo de ambiente para o padrão do Docker Compose
+            mv .env.prod .env
             
-            # 2. Gerar o .env.prod de produção
-            cat << 'EOF' > .env.prod
-            ${{ toJSON(secrets) }}
-            EOF
-            sed -i 's/[{}"]//g; s/: /=/g; s/,$//g; /^$/d' .env.prod
-            sed -i '/^SSH_KEY=/d; /^HOST=/d; /^USERNAME=/d; /^DOCKERHUB_/d' .env.prod
-
-            # 3. Docker Deploy
-            docker network create grafana_network || true
-            docker network create npm_network || true
+            # Setup de Redes
+            docker network create grafana_network 2>/dev/null || true
+            docker network create npm_network 2>/dev/null || true
             
-            # Puxa a imagem nova do Docker Hub e recria os containers
+            # Atualização e Deploy
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
             docker compose -f grafana-compose.yml up -d
-            # Limpeza de imagens antigas/órfãs para economizar disco na VPS
+            
+            # Limpeza
             docker image prune -f

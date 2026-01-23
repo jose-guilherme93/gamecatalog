@@ -1,0 +1,55 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+     "lib": ["ES2024"],
+    "module": "preserve",
+    "target": "esnext",
+    
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    
+
+    // Migration & Safety
+    "allowJs": true,
+    "checkJs": false,
+    "emitDeclarationOnly": false,
+    "baseUrl": "./src",
+      "paths": {
+      "@/*": ["*"]
+    },
+ 
+    
+
+  // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Style Options
+    // "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+
+    // Recommended Options
+    "strict": true,
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": false,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+
+    //Build
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+   "include": ["./src/**/*.ts"],
+  "exclude": ["node_modules",  "./dist"]
+}
