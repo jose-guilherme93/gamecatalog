@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { FaSearch, FaStar, FaUserCircle } from 'react-icons/fa'
 
 interface DecodedToken {
   userId: string
@@ -14,13 +15,17 @@ interface Review {
   game_id: string
   score: number
   review_text: string
+  game: {
+    title: string
+    background_image: string
+  }
 }
 
 interface Game {
   id: string
-  title: string
+  name: string
+  background_image: string
   description: string
-  // Add other relevant game fields here
 }
 
 export default function ProfilePage() {
@@ -32,6 +37,8 @@ export default function ProfilePage() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [reviewScore, setReviewScore] = useState(0)
   const [reviewText, setReviewText] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const router = useRouter()
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -39,28 +46,16 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem('sessionToken')
     if (token) {
-      const decodedToken = jwtDecode<DecodedToken>(token)
-      setUser(decodedToken)
-
-      const fetchReviews = async () => {
-        try {
-          const res = await fetch(
-            `http://localhost:3000/reviews/${decodedToken.userId}`
-          )
-          if (res.ok) {
-            const data = await res.json()
-            setReviews(data.reviews)
-          } else {
-            console.error('Failed to fetch reviews')
-          }
-        } catch (error) {
-          console.error('An error occurred while fetching reviews:', error)
-        }
+      try {
+        const decodedToken = jwtDecode<DecodedToken>(token)
+        setUser(decodedToken)
+        fetchReviews(decodedToken.userId)
+      } catch (error) {
+        console.error('Invalid token:', error)
+        handleLogout()
       }
-
-      fetchReviews()
     } else {
-      router.push('/login') // Redirect to login if no session token
+      router.push('/login')
     }
   }, [router])
 
@@ -70,52 +65,61 @@ export default function ProfilePage() {
         setIsDropdownOpen(false)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
+  const fetchReviews = async (userId: string) => {
+    try {
+      const res = await fetch(`http://localhost:3000/reviews/user/${userId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setReviews(data.reviews)
+      } else {
+        console.error('Failed to fetch reviews')
+      }
+    } catch (error) {
+      console.error('An error occurred while fetching reviews:', error)
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('sessionToken')
     router.push('/login')
   }
 
-  const handleSearch = async () => {
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if (!searchQuery) return
+
+    setIsLoading(true)
+    setError(null)
     try {
-      const res = await fetch(`http://localhost:3000/games/search-game?title=${searchQuery}`)
+      const res = await fetch(`http://localhost:3000/games/search-game?title=${searchQuery}`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
         setSearchResults(data)
-        setSelectedGame(null) // Clear selected game when new search is made
+        setSelectedGame(null)
       } else {
-        console.error('Failed to fetch games')
+        setError('Failed to fetch games')
         setSearchResults([])
       }
     } catch (error) {
-      console.error('An error occurred while searching for games:', error)
+      setError('An error occurred while searching for games')
       setSearchResults([])
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleGameSelect = async (gameId: string) => {
-    try {
-      const res = await fetch(`http://localhost:3000/games/${gameId}`)
-      if (res.ok) {
-        const data = await res.json()
-        setSelectedGame(data)
-        setReviewScore(0)
-        setReviewText('')
-      } else {
-        console.error('Failed to fetch game details')
-        setSelectedGame(null)
-      }
-    } catch (error) {
-      console.error('An error occurred while fetching game details:', error)
-      setSelectedGame(null)
-    }
+  const handleGameSelect = (game: Game) => {
+    setSelectedGame(game)
+    setReviewScore(0)
+    setReviewText('')
+    setSearchResults([])
+    setSearchQuery('')
   }
 
   const handleReviewSubmit = async () => {
@@ -125,7 +129,7 @@ export default function ProfilePage() {
     }
 
     try {
-      const token = localStorage.getItem('sessionToken');
+      const token = localStorage.getItem('sessionToken')
       const res = await fetch('http://localhost:3000/reviews', {
         method: 'POST',
         headers: {
@@ -142,27 +146,14 @@ export default function ProfilePage() {
 
       if (res.ok) {
         alert('Review submitted successfully!')
-        // Optionally, refresh reviews list or clear form
+        setSelectedGame(null)
         setReviewScore(0)
         setReviewText('')
-        setSelectedGame(null)
-        setSearchQuery('')
-        setSearchResults([])
-        // Re-fetch user reviews to show the new one
         if (user) {
-          const fetchReviews = async () => {
-            const reviewsRes = await fetch(
-              `http://localhost:3000/reviews/${user.userId}`
-            )
-            if (reviewsRes.ok) {
-              const data = await reviewsRes.json()
-              setReviews(data.reviews)
-            }
-          }
-          fetchReviews()
+          fetchReviews(user.userId)
         }
       } else {
-        const errorData = await res.json();
+        const errorData = await res.json()
         alert(`Failed to submit review: ${errorData.message || res.statusText}`)
       }
     } catch (error) {
@@ -172,139 +163,145 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Profile</h1>
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 font-bold"
-            aria-label="User Avatar"
-          >
-            {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
-          </button>
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10">
-              <button
-                onClick={handleLogout}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {user && (
-        <div className="mb-8">
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-          <p>
-            <strong>User ID:</strong> {user.userId}
-          </p>
-        </div>
-      )}
-
-      <div className="mb-8 p-4 border rounded-lg bg-gray-50">
-        <h2 className="text-xl text-black font-bold mb-4">Search Games & Add Review</h2>
-        <div className="flex mb-4">
-          <input
-            type="text"
-            className="flex-1 p-2 border text-black border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Search for a game..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch();
-              }
-            }}
-          />
-          <button
-            onClick={handleSearch}
-            className="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Search
-          </button>
-        </div>
-
-        {searchResults.length > 0 && (
-          <div className="mb-4 text-black">
-            <h3 className="text-lg font-semibold mb-2">Search Results:</h3>
-            <ul>
-              {searchResults.map((game) => (
-                <li
-                  key={game.id}
-                  className="p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
-                 // onClick={() => handleGameSelect(game.id)}
-                >
-                  
-                  <span>{game.title}</span>
-                  <Image src={game?.cover_url ?? ''} width={100} height={120} alt="" />
-                  <button className="text-blue-500 hover:underline">Select</button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {selectedGame && (
-          <div className="mb-4 p-4 border rounded-lg bg-white shadow-sm">
-            <h3 className="text-lg font-semibold mb-2">Selected Game: {selectedGame.title}</h3>
-            <p className="text-gray-700 mb-4">{selectedGame.description}</p>
-
-            <h4 className="text-md font-semibold mb-2">Submit Your Review</h4>
-            <div className="mb-2">
-              <label htmlFor="reviewScore" className="block text-sm font-medium text-gray-700">Score (1-5):</label>
-              <input
-                type="number"
-                id="reviewScore"
-                min="1"
-                max="5"
-                className="mt-1 p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={reviewScore}
-                onChange={(e) => setReviewScore(parseInt(e.target.value))}
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="reviewText" className="block text-sm font-medium text-gray-700">Review Text:</label>
-              <textarea
-                id="reviewText"
-                rows={4}
-                className="mt-1 p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Write your review here..."
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-              ></textarea>
-            </div>
+    <div className="bg-gray-900 min-h-screen text-white">
+      <header className="bg-gray-800 shadow-md">
+        <div className="container mx-auto p-4 flex justify-between items-center">
+          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <div className="relative" ref={dropdownRef}>
             <button
-              onClick={handleReviewSubmit}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl font-bold hover:bg-gray-600 transition"
+              aria-label="User menu"
             >
-              Submit Review
+              {user?.email ? user.email.charAt(0).toUpperCase() : <FaUserCircle />}
             </button>
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 z-20">
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+        {user && (
+          <div className="mb-8 p-6 bg-gray-800 rounded-lg shadow-lg">
+            <p className="text-lg"><strong>Email:</strong> {user.email}</p>
+            <p className="text-lg"><strong>User ID:</strong> {user.userId}</p>
           </div>
         )}
-      </div>
 
-      <h2 className="text-xl font-bold mb-4">My Reviews</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {reviews.map((review, index) => (
-          <div key={index} className="border p-4 rounded-lg">
-            <p>
-              <strong>Game ID:</strong> {review.game_id}
-            </p>
-            <p>
-              <strong>Score:</strong> {review.score}
-            </p>
-            <p>
-              <strong>Review:</strong> {review.review_text}
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column: Add Review */}
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4">Add a New Review</h2>
+            
+            <form onSubmit={handleSearch} className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Search for a game to review..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" disabled={isLoading}>
+                  <FaSearch />
+                </button>
+              </div>
+            </form>
+
+            {isLoading && <p>Searching...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            
+            {searchResults.length > 0 && (
+              <ul className="bg-gray-700 rounded-md max-h-60 overflow-y-auto mt-2">
+                {searchResults.map((game) => (
+                  <li
+                    key={game.id}
+                    className="p-3 hover:bg-gray-600 cursor-pointer flex items-center gap-4"
+                    onClick={() => handleGameSelect(game)}
+                  >
+                    <Image src={game.background_image} width={50} height={50} alt={game.name} className="rounded" />
+                    <span>{game.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {selectedGame && (
+              <div className="mt-6">
+                <h3 className="text-xl font-semibold mb-3">Reviewing: {selectedGame.name}</h3>
+                <Image src={selectedGame.background_image} width={200} height={120} alt={selectedGame.name} className="rounded-md mb-4" />
+
+                <div className="mb-4">
+                  <label htmlFor="reviewScore" className="block text-sm font-medium text-gray-300 mb-1">Score (1-5)</label>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <FaStar
+                        key={star}
+                        className={`cursor-pointer ${reviewScore >= star ? 'text-yellow-400' : 'text-gray-500'}`}
+                        onClick={() => setReviewScore(star)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="reviewText" className="block text-sm font-medium text-gray-300 mb-1">Review</label>
+                  <textarea
+                    id="reviewText"
+                    rows={4}
+                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="What did you think of the game?"
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                  ></textarea>
+                </div>
+
+                <button
+                  onClick={handleReviewSubmit}
+                  className="w-full py-2 px-4 bg-blue-600 rounded-md hover:bg-blue-700 transition font-semibold"
+                >
+                  Submit Review
+                </button>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+
+          {/* Right Column: My Reviews */}
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4">My Reviews</h2>
+            {reviews.length > 0 ? (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                {reviews.map((review, index) => (
+                  <div key={index} className="bg-gray-700 p-4 rounded-md flex items-start gap-4">
+                    <Image src={review.game.background_image} width={80} height={80} alt={review.game.title} className="rounded-md object-cover" />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg">{review.game.title}</h4>
+                      <div className="flex items-center my-1">
+                        {[...Array(5)].map((_, i) => (
+                          <FaStar key={i} className={i < review.score ? 'text-yellow-400' : 'text-gray-500'} />
+                        ))}
+                        <span className="ml-2 text-sm text-gray-400">({review.score}/5)</span>
+                      </div>
+                      <p className="text-gray-300">{review.review_text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400">You haven't written any reviews yet.</p>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
