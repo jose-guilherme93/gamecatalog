@@ -17,6 +17,7 @@ import globalLimiter from './utils/middlewares/globalRateLimiter.js'
 import authLimiter from './utils/middlewares/authRateLimiter.js'
 import notFoundRoute from './utils/middlewares/notFoundRoute.js'
 import docsRoutes from './routes/docsRoutes.js'
+import { errorHandler } from './utils/middlewares/errorHandler.js'
 
 const PORT = Number(process.env.SERVER_PORT) || 3000
 
@@ -36,7 +37,7 @@ app.set('trust proxy', 1)
 app.use(requestLogger)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true, limit: '10kb' }))
-app.use((req, res, next) => {req.io = io; next()}  )
+app.use((req, res, next) => { req.io = io; next() })
 
 app.use(globalLimiter)
 app.use('/auth', authLimiter)
@@ -54,7 +55,8 @@ app.get('/', (req, res) => res.status(200).json({
 
 app.use(notFoundRoute)
 
-app.listen(PORT, '0.0.0.0', () => {
-  logger.info('server is running')
+app.use(errorHandler)
 
+httpServer.listen(PORT, '0.0.0.0', () => {
+  logger.info('server is running')
 })

@@ -1,14 +1,8 @@
 import logger from '@/scripts/logger.js'
-import type { Response, Request } from 'express'
+import type { Response, Request, NextFunction } from 'express'
 import { randomUUID } from 'node:crypto'
-import * as z from 'zod'
+import { z } from 'zod'
 import bcrypt from 'bcrypt'
-
-import type { Session } from '@/types/session.js'
-import type { QueryResult } from 'pg'
-import type { User } from '@/types/user.js'
-type SessionQueryResult = QueryResult<Session>
-
 import {
   checkUser,
   createUserDB,
@@ -16,172 +10,149 @@ import {
   getAllUsersDB,
   getSessionByIdDb,
   getUserByID,
-  updateUserDB } from '../models/userModel.js'
+  updateUserDB
+} from '../models/userModel.js'
 
-const ParamsSchema = z.object({
-  id: z.string('ID inválido.'),
+export const userParamsSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('ID inválido.'),
+  }),
 })
 
-export const getAllUsers = async (req: Request, res: Response) => {
+export const createUserSchema = z.object({
+  body: z.object({
+    username: z.string().min(3, 'Username deve ter pelo menos 3 caracteres').max(100),
+    email: z.string().email('Formato de email inválido').max(100),
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(64),
+    avatar: z.string().url('URL do avatar inválido').optional().nullable(),
+  }),
+})
+
+export const updateUserSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('ID inválido.'),
+  }),
+  body: z.object({
+    username: z.string().min(3).max(100).optional(),
+    email: z.email().max(100).optional(),
+    password: z.string().min(6).max(64).optional(),
+    avatar: z.string().url().optional().nullable(),
+  }),
+})
+
+// Helper to remove sensitive fields
+const sanitizeUser = (user: any) => {
+  const { password_hash, ...rest } = user
+  return rest
+}
+
+export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const getUsers = await getAllUsersDB()
-
-    res.status(200).json({ users: getUsers.rows })
-
-  } catch(error) {
-    logger.info(error)
+    const result = await getAllUsersDB()
+    const users = result.rows.map(sanitizeUser)
+    return res.status(200).json({ users })
+  } catch (error) {
+    next(error)
   }
 }
 
-const emailSchema = z.string().email('O formato do email é inválido. Verifique o endereço digitado.')
-
-export const createUserController = async (req: Request, res: Response) => {
-
-  const { username, email: rawEmail, password_hash, avatar }: User = req.body
-  logger.info('creating a user...')
+export const createUserController = async (req: Request, res: Response, next: NextFunction) => {
+  const { username, email, password, avatar } = req.body
 
   try {
-    const email = rawEmail?.toString().trim()
-    const parsedEmail = emailSchema.parse(email)
+    logger.info(`Criando usuário: ${username}`)
 
-    if(!username || !password_hash) {
-      return res.status(400).json({ message: 'dados incompletos: username ou password_hash faltando' })
+    const check = await checkUser({ email })
+    if (check.rows.length > 0) {
+      return res.status(409).json({ message: 'E-mail já cadastrado' })
     }
 
-    // Hash the provided password before saving
-    const hashedPassword = await bcrypt.hash(password_hash, 10)
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    const newUser: User = {
+    const newUser = {
       id: randomUUID(),
       username,
-      email: parsedEmail,
+      email,
       password_hash: hashedPassword,
-      avatar,
+      avatar: avatar || null,
     }
 
-    const check = await checkUser({ email: newUser.email })
+    const result = await createUserDB(newUser)
+    logger.info(`Usuário criado com ID: ${result.rows[0].id}`)
 
-    if(check.rows.length > 0) {
-      return res.status(409).json({ message:'usuário já cadastrado' })
-    }
-
-    try {
-      const result = await createUserDB(newUser)
-      logger.info(`usuário criado com ID: ${result.rows[0].id}`)
-      return res.status(201).json({ user: result.rows[0] })
-    }
-    catch (dbError) {
-      logger.error('erro ao criar usuário no DB: ', dbError)
-      return res.status(500).json({ message: 'erro ao criar usuário',
-        error: dbError instanceof Error ? dbError.message : String(dbError),
-      })
-    }
-  }
-
-  catch (error) {
-    if (error instanceof z.ZodError) {
-      logger.warn(`Zod Validation Failed: ${error.issues[0]!.message}`)
-      return res.status(400).json({ message: error.issues[0]!.message })
-    }
-
-    logger.error('Erro no fluxo de criação:', error)
-    return res.status(500).json({
-      message: 'Erro interno do servidor',
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
-}
-
-export const deleteUserController = async (req: Request, res: Response) => {
-
-  const { id } = ParamsSchema.parse(req.params)
-  logger.warn(`deleting user with id: ${id}`)
-  try {
-    const deleteUser = await deleteUserDB(id)
-    if(deleteUser.rows.length > 0) {
-      logger.info(`deleted_at at ${deleteUser.rows[0].deleted_at}`)
-      res.status(200).json({ user: deleteUser.rows[0] })
-
-    }   else {res.status(404).json({ message: 'id not found' })
-
-    }
-
-  }   catch(error) {
-    logger.error('erro na requisição: ', error)
-    res.status(500).json({ message: error })
-  }
-}
-
-export const updateUserByIdController = async (req: Request, res: Response) => {
-
-  const { id } = ParamsSchema.parse(req.params)
-  const updateUserFromUser = req.body
-  const now = new Date()
-  const timestamp = now.toISOString().slice(0, 19).replace('T', ' ')
-
-  updateUserFromUser['updated_at'] = timestamp
-
-  try {
-
-    const updatedUser = await updateUserDB(id, updateUserFromUser)
-    if (updatedUser.rows.length > 0) {
-      res.status(200).json({ user: updatedUser.rows[0] })
-    } else {
-      res.status(404).json({ message: 'NOT FOUND: usuário não encontrado' })
-    }
+    return res.status(201).json({ user: sanitizeUser(result.rows[0]) })
   } catch (error) {
-    if(error instanceof z.ZodError) {
-      return res.status(400).json({ message: 'invalid data', errors: error.issues })
-    }
-    logger.error('erro ao atualizar usuário: ', error)
-    res.status(500).json({ error: (error as Error).message })
+    next(error)
   }
 }
 
-export const getUserByIdController = async (req: Request, res: Response) => {
-  const { id } = ParamsSchema.parse(req.params)
+export const deleteUserController = async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params
 
   try {
-    const getUser = await getUserByID(id)
+    logger.warn(`Deletando usuário: ${id}`)
+    const result = await deleteUserDB(id as string)
 
-    if(!getUser.rows.length) {
-      return res.status(404).json({ message: 'NOT FOUND: usuário não encontrado' })
-    } else {
-      res.status(200).json({ user: getUser.rows[0] })
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' })
     }
 
-  } catch(error) {
-    logger.error('erro ao buscar usuário no banco: ', error)
-
-    res.status(500).json({
-      message: 'internal server error',
-      error: (error as Error).message,
+    return res.status(200).json({
+      message: 'Usuário removido com sucesso',
+      deletedAt: result.rows[0].deleted_at
     })
-
+  } catch (error) {
+    next(error)
   }
 }
 
-export const getSessionByIdController = async (req: Request, res: Response)  => {
-  const { id } = ParamsSchema.parse(req.params)
+export const updateUserByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params
+  const updateData = { ...req.body }
 
   try {
-    logger.info('searching sessions in DB')
-    const result: SessionQueryResult = await getSessionByIdDb(id)
-    if (result.rowCount! > 0) { logger.info('DB: consult ok') }
-    else { logger.warn('DB: session not found') }
-
-    res.status(200).json({ message:result.rows })
-
-  } catch(error) {
-    if(error instanceof z.ZodError) {
-      logger.error('validation error: ', error)
-      return res.status(400).json({ message: 'invalid data', errors: error.issues })
+    if (updateData.password) {
+      updateData.password_hash = await bcrypt.hash(updateData.password, 10)
+      delete updateData.password
     }
-    logger.error('erro ao buscar sessões no banco: ', error)
 
-    res.status(400).json({
-      error: (error as Error).message,
-    })
+    const result = await updateUserDB(id as string, updateData)
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' })
+    }
+
+    return res.status(200).json({ user: sanitizeUser(result.rows[0]) })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getUserByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params
+
+  try {
+    const result = await getUserByID(id as string)
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Usuário não encontrado' })
+    }
+
+    return res.status(200).json({ user: sanitizeUser(result.rows[0]) })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getSessionByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params
+
+  try {
+    logger.info(`Buscando sessões para o usuário: ${id}`)
+    const result = await getSessionByIdDb(id as string)
+
+    return res.status(200).json({ sessions: result.rows })
+  } catch (error) {
+    next(error)
   }
 }

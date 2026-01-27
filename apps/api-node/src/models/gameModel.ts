@@ -22,16 +22,64 @@ interface GameFilters {
 }
 
 interface GameCreationParams {
+  id: string
   title: string
-  rating: number
-  status: string
-  review: string
-  plataform: string
+  rating?: number
+  status?: string
+  review?: string
+  plataform?: string
   first_release_date: Date | string
-  storyline: string
+  storyline?: string
   cover_url: string
   slug: string
 }
+
+export const upsertGame = async (bodyParams: GameCreationParams) => {
+  const {
+    id,
+    title,
+    rating,
+    status,
+    review,
+    plataform,
+    first_release_date,
+    storyline,
+    cover_url,
+    slug,
+  } = bodyParams
+
+  const query = `INSERT INTO "games" (id, title, rating, status, review, plataform, first_release_date, storyline, cover_url, slug)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    rating = EXCLUDED.rating,
+    status = EXCLUDED.status,
+    review = EXCLUDED.review,
+    plataform = EXCLUDED.plataform,
+    first_release_date = EXCLUDED.first_release_date,
+    storyline = EXCLUDED.storyline,
+    cover_url = EXCLUDED.cover_url,
+    slug = EXCLUDED.slug
+  RETURNING *;
+`
+
+  const values = [
+    id,
+    title,
+    rating,
+    status,
+    review,
+    plataform,
+    first_release_date,
+    storyline,
+    cover_url,
+    slug,
+  ]
+
+  const responseQuery: QueryResult = await pool.query(query, values)
+  return responseQuery.rows[0]
+}
+
 
 type UpdateGameData = Partial<GameCreationParams>
 
@@ -66,37 +114,7 @@ export const getAllGamesDB = async (filters: GameFilters = {}): Promise<{ data: 
 }
 
 export const createGame = async (bodyParams: GameCreationParams) => {
-  const  {
-    title,
-    rating,
-    status,
-    review,
-    plataform,
-    first_release_date,
-    storyline,
-    cover_url,
-    slug,
-  } = bodyParams
-
-  const query = `INSERT INTO "games" (title,
-        rating,
-        status,
-        review,
-        plataform,
-        first_release_date,
-        storyline,
-        cover_url,
-        slug) 
-  VALUES ($1,$2, $3, $4, $5, $6,$7,$8,$9) 
-  RETURNING *;
-`
-
-  const values = [
-    title, rating, status, review, plataform, first_release_date, storyline, cover_url, slug,
-  ]
-
-  const responseQuery: QueryResult = await pool.query(query, values)
-  return responseQuery.rows[0]
+  return await upsertGame(bodyParams)
 }
 
 export const updateGameDB = async (id: string, updateGameData: UpdateGameData) => {

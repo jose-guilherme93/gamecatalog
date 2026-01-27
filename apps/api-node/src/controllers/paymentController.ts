@@ -1,121 +1,121 @@
-import { type Response, type Request } from 'express'
+import { type Response, type Request, type NextFunction } from 'express'
 import { z } from 'zod'
 import logger from '@/scripts/logger.js'
 import { rdb } from '@/utils/redis.js'
 import { createDonationPaymentDB, updateDonationPaymentDB } from '@/models/paymentModel.js'
+import { donationSchema, abacateCreateResponseSchema, type AbacateCreateResponse } from '@/types/payment.js'
+import type { QueryResult } from 'pg'
+import crypto from 'node:crypto'
 
-import { DonationPayload, donationSchema, abacateCreateResponseSchema, AbacateCreateResponse } from '@/types/payment.js'
-import { QueryResult } from 'pg'
-
-const token = process.env.ABACATE_PAY_API
-export async function createDonationPayment(req: Request, res: Response) {
-  logger.info('Iniciando criação de doação PIX...')
-
-  const bodySchema = donationSchema.omit({
+export const createDonationSchema = z.object({
+  body: donationSchema.omit({
     id: true,
     platformFee: true,
     status: true,
-  })
+  }),
+})
 
-  const parsedBody = bodySchema.safeParse(req.body)
-  if (!parsedBody.success) {
-    return res.status(400).json({ message: 'Dados inválidos', errors: parsedBody.error })
-  }
+export const checkPaymentSchema = z.object({
+  body: z.object({
+    id: z.string().min(1),
+  }),
+})
 
+export const webhookSchema = z.object({
+  query: z.object({
+    webhookSecret: z.string(),
+  }),
+})
+
+export async function createDonationPayment(req: Request, res: Response, next: NextFunction) {
   try {
+    logger.info('Iniciando criação de doação PIX...')
 
-    const abacateResponse = await fetch('https://api.abacatepay.com/v1/pixQrCode/create', {
+    const response = await fetch('https://api.abacatepay.com/v1/pixQrCode/create', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.ABACATE_PAY_API}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(parsedBody.data),
+      body: JSON.stringify(req.body),
     })
 
-    if (!abacateResponse.ok) {
-      throw new Error(`AbacatePay Error: ${abacateResponse.statusText}`)
+    if (!response.ok) {
+      const errorData = await response.json()
+      logger.error('Erro na API do AbacatePay:', errorData)
+      return res.status(response.status).json({
+        message: 'Erro ao criar cobrança no provedor de pagamento',
+        details: errorData
+      })
     }
 
-    const abacateJson = await abacateResponse.json()
+    const abacateJson = await response.json()
     const abacateParse = abacateCreateResponseSchema.safeParse(abacateJson)
     const abacate: AbacateCreateResponse = abacateParse.success
       ? abacateParse.data
-      : { data: { id: parsedBody.data.metadata?.externalId ?? 'default-id' } }
+      : { data: { id: req.body.metadata?.externalId ?? 'default-id' } as any }
 
-    const donationData: DonationPayload = {
+    const donationData = {
       id: crypto.randomUUID(),
       externalId: abacate.data!.id,
-      amount: parsedBody.data.amount,
-      customer: parsedBody.data.customer,
-      description: parsedBody.data.description,
-      platformFee: 80,
-      status: 'PENDING',
-      metadata: parsedBody.data.metadata,
+      amount: req.body.amount,
+      customer: req.body.customer,
+      description: req.body.description,
+      platformFee: 80, // Default fee
+      status: 'PENDING' as const,
+      metadata: req.body.metadata,
       expiresIn: 123,
     }
+
     await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
-    const queryDB: QueryResult = await createDonationPaymentDB(donationData)
+    const queryDB: QueryResult = await createDonationPaymentDB(donationData as any)
 
     if (queryDB.rowCount! > 0) {
       logger.info(`Doação criada com sucesso: ${donationData.id}`)
       return res.status(201).json({
-        message: 'Donation created',
+        message: 'Doação iniciada com sucesso',
         id: abacate.data!.id,
-        pixCode: abacate.data!.pixCode, 
+        pixCode: abacate.data!.pixCode,
       })
     }
 
-    return res.status(500).json({ message: 'Failed to save donation' })
-
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-
-      logger.error(`Erro no fluxo de doação: ${error.message}`)
-    }
-    return res.status(500).json({ message: 'Internal server error' })
+    throw new Error('Falha ao salvar doação no banco de dados')
+  } catch (error) {
+    next(error)
   }
 }
-export async function checkPaymentDonation(req: Request, res: Response) {
+
+export async function checkPaymentDonation(req: Request, res: Response, next: NextFunction) {
   const { id } = req.body
-  const url = `https://api.abacatepay.com/v1/pixQrCode/check?id=${id}`
-  const options = {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${token}` },
-    body: null,
-  }
+  const token = process.env.ABACATE_PAY_API
 
   try {
-    const response = await fetch(url, options)
+    const url = `https://api.abacatepay.com/v1/pixQrCode/check?id=${id}`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
     const data = await response.json()
-    logger.info(data)
     return res.status(200).json({ data })
-  }
-  catch (error) {
-    logger.info(error)
+  } catch (error) {
+    next(error)
   }
 }
 
-export async function handleAbacatePayWebhook( req: Request, res: Response ) {
+export async function handleAbacatePayWebhook(req: Request, res: Response, next: NextFunction) {
+  const { webhookSecret } = req.query as { webhookSecret: string }
 
-  const webhookSecretSchema = z.string()
-  logger.info('trying to receive data from webhook...')
-
-  const { webhookSecret } = req.query
-  const secretParsed = webhookSecretSchema.safeParse(webhookSecret)
-
-  if ( secretParsed.data !== process.env.WEBHOOK_SECRET) {
-    return res.status(401).json({ error: 'Invalid webhook secret',
-      message: secretParsed.error?.message,
-    })
+  if (webhookSecret !== process.env.WEBHOOK_SECRET) {
+    logger.warn(`Tentativa de webhook com secret inválido: ${webhookSecret}`)
+    return res.status(401).json({ error: 'Invalid webhook secret' })
   }
 
-  logger.info(`parameter: ${webhookSecret}`)
-  const event = req.body
-  const payload = (event && event.data) ? event.data : event
-  logger.info(`Received webhook: ${JSON.stringify(payload)}`)
-
   try {
+    const event = req.body
+    const payload = (event && event.data) ? event.data : event
+    logger.info(`Recebido webhook: ${JSON.stringify(payload)}`)
+
     const pixQrCode = payload?.pixQrCode ?? payload?.pix_qr_code ?? null
     const payment = payload?.payment ?? null
 
@@ -140,14 +140,13 @@ export async function handleAbacatePayWebhook( req: Request, res: Response ) {
     )
 
     if (result && result.rowCount && result.rowCount > 0) {
-      logger.info(`Donation updated: rows=${result.rowCount}`)
+      logger.info(`Doação atualizada via webhook: ${abacateId}`)
     } else {
-      logger.info('Donation not found to update')
+      logger.warn(`Doação não encontrada para atualizar via webhook: ${abacateId}`)
     }
 
     return res.status(200).json({ received: true })
-  } catch (error: unknown) {
-    if (error instanceof Error) logger.error(`Webhook handling error: ${error.message}`)
-    return res.status(500).json({ error: 'Internal server error' })
+  } catch (error) {
+    next(error)
   }
 }
