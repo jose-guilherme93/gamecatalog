@@ -3,7 +3,6 @@ import LokiTransport from 'winston-loki'
 
 const { combine, timestamp, printf, splat, json } = format
 
-// Definição de formato customizado para legibilidade no console/arquivo
 const customFormat = printf(({ timestamp, level, message }) => {
     return `${timestamp} [${level.toUpperCase()}]: ${message}`
 })

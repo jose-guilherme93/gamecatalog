@@ -1,82 +1,104 @@
-[![Status da Build](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
-[![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Tecnologias](https://img.shields.io/badge/Stack-Full%20Stack%20TS-informational)](https://www.typescriptlang.org/)
+# 🎮 GameCatalog Monorepo
+
+[![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Stack](https://img.shields.io/badge/Stack-Full%20Stack-informational)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Monitoramento](https://img.shields.io/badge/Monitoring-Grafana-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
+[![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Go](https://img.shields.io/badge/Worker-Go-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 
-# Documentação do Projeto `Gamecatalog`
-
-Este é um projeto **Node.js/Express.js** estruturado como uma **API REST** robusta. Ele utiliza um design **MVC simplificado**, com foco em separação de responsabilidades entre controladores, modelos e rotas.
-
----
-
-## ⚙️ Tecnologias e Dependências
-
-O projeto é construído sobre as seguintes tecnologias principais:
-
-* **Node.js**: Ambiente de execução assíncrono (utiliza **ES Modules - ESM**).
-* **Express.js**: Framework minimalista para criação de API REST.
-* **PostgreSQL (`pg`)**: Driver oficial para conexão com o banco de dados relacional.
-* **PNPM**: Gerenciador de pacotes eficiente, garantindo a integridade e *caching* de dependências.
-* **Vite/Vitest**: Ambiente de **teste unitário** rápido e moderno.
-* **Winston**: Biblioteca de *logging* para gerenciamento estruturado de logs de aplicação.
-* **JWT (`jsonwebtoken`)**: Implementação de autenticação baseada em tokens.
-* **Dotenv**: Gerenciamento seguro de **variáveis de ambiente**.
+Bem-vindo ao **GameCatalog**, uma plataforma para gerenciamento de avaliações de games para registrar em seu perfil nota, pensamentos, e outras informações sobre qualquer game que jogou ou quer jogar na vida.
 
 ---
 
-## 📂 Estrutura de Arquivos
+## 🏛️ Arquitetura do Projeto
 
-A organização do projeto segue uma arquitetura modular clara, facilitando a navegação e a manutenção:
+O projeto é dividido em três componentes principais localizados na pasta `apps/`:
 
-* **`src/`**: Contém todo o código-fonte da aplicação.
-    * **`controllers/`**: Lógica de negócio e manipulação das requisições (a camada de serviço).
-    * **`migrations/`**: Scripts SQL ou JS/TS para versionamento e gerenciamento do esquema do banco de dados.
-    * **`models/`**: Representação dos dados e interação direta com o banco de dados (a camada de dados).
-    * **`routes/`**: Definição dos endpoints da API e mapeamento para os *controllers*.
-    * **`utils/`**: Funções utilitárias e *middlewares* compartilhados (`connectDatabase.js`, `middlewares.js`).
-* **`package.json`**: Metadados do projeto. O campo `"type": "module"` indica o uso obrigatório de **sintaxe ESM (`import/export`)**.
-* **`.env`**: **Variáveis de ambiente sensíveis**. **Este arquivo deve ser sempre ignorado pelo Git.**
-* **`pnpm-lock.yaml`**: Garante a **reprodutibilidade exata** das dependências entre ambientes.
+### 🌐 [Frontend (Next.js)](./apps/web)
+Interface do usuário moderna construída com:
+- **Next.js 14** (App Router)
+- **React 18** & **Tailwind CSS**
+- **Lucide React** para ícones
+- Autenticação com fluxos de login e registro.
+
+### 🚀 [API (Node.js/Express)](./apps/api-node)
+Backend robusto seguindo padrões de excelência:
+- **TypeScript** & **Express 5**
+- **PostgreSQL** com driver `pg`
+- **Zod** para validação de esquemas
+- **Winston** & **Winston-Loki** para logs estruturados
+- **Vitest** para testes automatizados de alta performance.
+
+### � [Payment Worker (Go)](./apps/worker-donations)
+Serviço de alta performance para processamento assíncrono:
+- **Go (Golang)**
+- Integração com **Redis** para mensageria (filas)
+- Orquestração de notificações de e-mail (Paid, Expired, Cancelled) via SMTP.
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## 🛠️ Stack Tecnológica
 
-Siga os passos abaixo para configurar e iniciar o projeto no seu ambiente de desenvolvimento.
+| Componente | Tecnologias Principais |
+| :--- | :--- |
+| **Infraestrutura** | Docker, Docker Compose, PostgreSQL, Redis |
+| **Observabilidade** | Grafana, Loki, Winston |
+| **Segurança** | Infisical (Gerenciamento de Segredos), JWT, Helmet |
+| **Backend** | Node.js, Express, Go |
+| **Frontend** | Next.js, Tailwind CSS |
 
-### 1. Configuração do Ambiente
+---
 
-1.  Certifique-se de ter o **Node.js** (versão 18+ é ideal para ESM) e o **PNPM** instalados.
-2.  Crie um arquivo **`.env.development`** na raiz do projeto com as seguintes variáveis de configuração do PostgreSQL e da chave de segurança:
+## 🚀 Como Iniciar
 
-    ```env
-        PGHOST=localhost
-        PGPORT=5432
-        PGUSER=postgres
-        PGPASSWORD=crudpass
-        PGDATABASE=cruddb
-        JWT_SECRET=qwdnqwldo
-        GF_SECURITY_ADMIN_USER=admin
-        GF_SECURITY_ADMIN_PASSWORD=adminpass
-        USERNAME_MAILER=username-mailtrap
-        USER_PASSWORD_TRANSPORTER_MAILER=password-mailtrap
-    ```
-3. ## 🐳 Docker e Gerenciamento de Containers
+### 1. Pré-requisitos
+Certifique-se de ter instalado:
+- **Node.js 18+** & **PNPM**
+- **Go 1.21+**
+- **Docker** & **Docker Compose**
+- **Infisical CLI** (para gerenciamento de variáveis de ambiente)
 
-O projeto utiliza **Docker Compose** para orquestrar o ambiente de banco de dados (`PostgreSQL`) e sua interface de gerenciamento (`pgAdmin`), garantindo que todos os desenvolvedores usem a mesma infraestrutura de dados.
-
-### 1. Inicialização dos Containers
-
-Para iniciar o banco de dados e o pgAdmin, execute o comando abaixo na raiz do projeto (onde está o `docker-compose.yml`):
-
-```bash
-docker compose up -d
-```
-
-### 2. Instalação de Dependências
-
-Execute o comando de instalação de pacotes PNPM para baixar todas as dependências do `package.json` e garantir o *lock* exato via `pnpm-lock.yaml`:
-
+### 2. Configurações Iniciais
+Instale as dependências de todo o monorepo:
 ```bash
 pnpm install
+```
+
+### 3. Infraestrutura
+Suba os serviços essenciais (Banco de Dados e Cache):
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+### 4. Rodando o Desenvolvimento
+Para rodar todos os aplicativos simultaneamente em modo de desenvolvimento:
+```bash
+pnpm dev
+```
+O monorepo irá iniciar:
+- **Web**: `http://localhost:3002`
+- **API**: `http://localhost:3000`
+- **Worker**: Monitorando a fila do Redis
+
+---
+
+## 🧪 Testes e Qualidade
+O projeto prioriza a qualidade do código com testes rigorosos:
+```bash
+# Rodar testes da API
+pnpm test
+```
+
+---
+
+## � Gerenciamento de Segredos
+Utilizamos o **Infisical** para garantir que credenciais sensíveis (APIs de pagamento, bancos de dados, SMTP) nunca vazem. Os scripts de inicialização utilizam `infisical run --` para injetar segredos com segurança em tempo de execução.
+
+---
+
+## 📈 Monitoramento
+Logs são centralizados no **Grafana** via **Loki**. Configure seu container Loki para receber logs do `winston-loki` da API para uma visão 360º da saúde do sistema.
+
+---
+Desenvolvido por [José Guilherme (Joseti)](https://github.com/jose-guilherme93). MIT License.
