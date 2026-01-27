@@ -8,7 +8,7 @@ vi.mock('../src/models/reviewModel.js', () => ({
   updateReviewDB: vi.fn(),
 }))
 
-import * as reviewCtrl from '../src/controllers/reviewControler.js'
+import * as reviewCtrl from '../src/controllers/reviewController.js'
 
 function mockRes() {
   const res: any = {}
@@ -26,7 +26,8 @@ describe('reviewController', () => {
 
     const req: any = { params: { game_id: 'g1' } }
     const res = mockRes()
-    await reviewCtrl.getReviewByGameIdController(req, res)
+    const next = vi.fn()
+    await reviewCtrl.getReviewByGameIdController(req, res, next)
 
     expect(res.status).toHaveBeenCalledWith(200)
   })
@@ -36,9 +37,10 @@ describe('reviewController', () => {
     checkExistingReview.mockResolvedValue({ rowCount: 0 })
     createReviewDB.mockResolvedValue({ id: 'new' })
 
-    const req: any = { body: { user_id: 'u', game_id: 'g', score: 5, review_text: 'ok' } }
+    const req: any = { body: { userId: 'u', gameId: 'g', score: 5, reviewText: 'ok' } }
     const res = mockRes()
-    await reviewCtrl.createReviewController(req, res)
+    const next = vi.fn()
+    await reviewCtrl.createReviewController(req, res, next)
 
     expect(res.status).toHaveBeenCalledWith(201)
   })

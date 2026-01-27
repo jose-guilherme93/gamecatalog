@@ -1,42 +1,49 @@
+import { z } from 'zod'
 import logger from '../../scripts/logger.js'
 import { pool } from '../../utils/connectDatabase.js'
-import * as z from 'zod'
-import type { Request, Response } from 'express'
+import type { Request, Response, NextFunction } from 'express'
+import bcrypt from 'bcrypt'
 
-const tokenSchema = z.object({
-  recoveryToken: z.string().length(64).regex(/^[a-f0-9]{64}$/i),
+export const resetPasswordSchema = z.object({
+  query: z.object({
+    recoveryToken: z.string().length(64, 'Token de recuperação inválido'),
+  }),
+  body: z.object({
+    password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres').max(64),
+  }),
 })
-export const resetPasswordController = async (req: Request, res: Response) => {
+
+export const resetPasswordController = async (req: Request, res: Response, next: NextFunction) => {
+  const { recoveryToken } = req.query as { recoveryToken: string }
+  const { password } = req.body
+
   try {
-    const { recoveryToken } = tokenSchema.parse(req.query)
+    logger.info('Tentativa de redefinição de senha')
 
-    const { newPasswordHash: password } = req.body
-    if(!password || password.length < 6) {
-      return res.status(400).json({ message: 'password needs at least 6 digits' })
+    const { rows: recoveryRows } = await pool.query(
+      'SELECT user_id FROM recovery WHERE code = $1',
+      [recoveryToken]
+    )
+
+    if (recoveryRows.length === 0) {
+      logger.warn(`Token de recuperação inválido ou expirado: ${recoveryToken}`)
+      return res.status(401).json({ message: 'Código de verificação inválido ou expirado' })
     }
 
-    const responseDb = await pool.query(`
-      SELECT * 
-      FROM recovery 
-      WHERE code = $1`, [recoveryToken])
+    const userId = recoveryRows[0].user_id
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    if(responseDb.rows.length === 0 || responseDb.rowCount === 0) {
-      return res.status(401).json({ message: 'código de verificação inválido' })
-    } else {
-      const responseDbRecoveryPassword =
-      await pool.query(`
-      UPDATE users 
-      SET password_hash = $1 
-      WHERE id = $2 RETURNING *`, [password, responseDb.rows[0].user_id])
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [hashedPassword, userId]
+    )
 
-      return res.status(200).json({ message: responseDbRecoveryPassword.rows[0] })
-    }
-  } catch(error) {
-    if (error instanceof z.ZodError) {
-      logger.warn('Validation error during password reset', { error: error.issues })
-      return res.status(400).json({ message: 'Invalid token format', details: error.issues })
-    }
-    logger.error('Error during password reset', { error })
-    return res.status(500).json({ error: 'Internal server error' })
+    await pool.query('DELETE FROM recovery WHERE code = $1', [recoveryToken])
+
+    logger.info(`Senha redefinida com sucesso para o usuário: ${userId}`)
+
+    return res.status(200).json({ message: 'Senha redefinida com sucesso' })
+  } catch (error) {
+    next(error)
   }
 }

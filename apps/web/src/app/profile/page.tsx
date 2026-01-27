@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { FaSearch, FaStar, FaUserCircle } from 'react-icons/fa'
+import axios from 'axios'
 
 interface DecodedToken {
   userId: string
@@ -57,7 +58,16 @@ export default function ProfilePage() {
     } else {
       router.push('/login')
     }
+
+    const savedQuery = localStorage.getItem('searchQuery')
+    if (savedQuery) {
+      setSearchQuery(savedQuery)
+    }
   }, [router])
+
+  useEffect(() => {
+    localStorage.setItem('searchQuery', searchQuery)
+  }, [searchQuery])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -87,6 +97,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem('sessionToken')
+    localStorage.removeItem('searchQuery')
     router.push('/login')
   }
 
@@ -114,12 +125,41 @@ export default function ProfilePage() {
     }
   }
 
-  const handleGameSelect = (game: Game) => {
-    setSelectedGame(game)
-    setReviewScore(0)
-    setReviewText('')
-    setSearchResults([])
-    setSearchQuery('')
+  const handleGameSelect = async (game: Game) => {
+    try {
+      // Replace with your actual RAWG API key
+      const apiKey = process.env.NEXT_PUBLIC_RAWG_KEY
+      const response = await axios.get(`https://api.rawg.io/api/games/${game.id}?key=${apiKey}`)
+      const gameDetails = response.data
+
+      const gameData = {
+        game_id: gameDetails.id.toString(),
+        title: gameDetails.name,
+        slug: gameDetails.slug,
+        rating: gameDetails.rating,
+        status: 'Jogando', // Default status
+        review: '', // Default review
+        storyline: gameDetails.description_raw,
+        cover_url: gameDetails.background_image,
+        plataform: gameDetails.platforms.map((p: any) => p.platform.name).join(', '),
+        first_release_date: gameDetails.released,
+      }
+      console.log(gameData)
+      await fetch('http://localhost:3000/games/upsert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(gameData),
+      })
+      
+
+      localStorage.setItem('gameToReview', JSON.stringify(game))
+      router.push(`/review/${game.id}`)
+    } catch (error) {
+      console.error('Error fetching game details or saving game:', error)
+     
+    }
   }
 
   const handleReviewSubmit = async () => {

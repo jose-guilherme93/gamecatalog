@@ -15,7 +15,7 @@ vi.mock('express', () => {
   return { default: fn }
 })
 
-vi.mock('node:http', () => ({ createServer: () => ({}) }))
+vi.mock('node:http', () => ({ createServer: () => ({ listen }) }))
 vi.mock('socket.io', () => ({ Server: vi.fn(() => ({})) }))
 vi.mock('cors', () => ({ default: () => (req: any, res: any, next: any) => next() }))
 vi.mock('helmet', () => ({ default: () => (req: any, res: any, next: any) => next() }))
