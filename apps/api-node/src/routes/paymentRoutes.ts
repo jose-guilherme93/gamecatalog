@@ -13,6 +13,6 @@ const route: Router = express.Router()
 
 route.post('/', validateRequest(createDonationSchema), createDonationPayment)
 route.post('/payment-check', validateRequest(checkPaymentSchema), checkPaymentDonation)
-route.post('/abacate-pay-webhook', validateRequest(webhookSchema), handleAbacatePayWebhook)
+route.head('/abacate-pay-webhook', validateRequest(webhookSchema), handleAbacatePayWebhook)
 
 export default route

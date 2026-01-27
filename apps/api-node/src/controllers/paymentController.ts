@@ -64,7 +64,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       platformFee: 80, // Default fee
       status: 'PENDING' as const,
       metadata: req.body.metadata,
-      expiresIn: 123,
+      expiresIn: 223,
     }
 
     await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
@@ -74,7 +74,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       logger.info(`Doação criada com sucesso: ${donationData.id}`)
       return res.status(201).json({
         message: 'Doação iniciada com sucesso',
-        id: abacate.data!.id,
+        id: abacate.data,
         pixCode: abacate.data!.pixCode,
       })
     }
