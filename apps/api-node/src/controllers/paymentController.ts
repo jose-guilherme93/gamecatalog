@@ -141,6 +141,19 @@ export async function handleAbacatePayWebhook(req: Request, res: Response, next:
 
     if (result && result.rowCount && result.rowCount > 0) {
       logger.info(`Doação atualizada via webhook: ${abacateId}`)
+
+      // Notify worker about important status changes
+      if (['PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(status)) {
+        const message = {
+          externalId: abacateId,
+          status,
+          customer: customerData,
+          amount: pixQrCode?.amount || payload?.amount,
+          id: result.rows[0]?.id || metadataExternalId
+        }
+        await rdb.lPush('pix:donations:queue', JSON.stringify(message))
+        logger.info(`Notificação de status ${status} enviada para a fila para ${abacateId}`)
+      }
     } else {
       logger.warn(`Doação não encontrada para atualizar via webhook: ${abacateId}`)
     }
