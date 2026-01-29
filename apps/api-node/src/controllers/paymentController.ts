@@ -2,7 +2,7 @@ import { type Response, type Request, type NextFunction } from 'express'
 import { z } from 'zod'
 import logger from '@/scripts/logger.js'
 import { rdb } from '@/utils/redis.js'
-import { createDonationPaymentDB, updateDonationPaymentDB } from '@/models/paymentModel.js'
+import { createDonationPaymentDB, updateDonationPaymentDB, getDonationByExternalId } from '@/models/paymentModel.js'
 import { donationSchema, abacateCreateResponseSchema, type AbacateCreateResponse } from '@/types/payment.js'
 import type { QueryResult } from 'pg'
 import crypto from 'node:crypto'
@@ -90,14 +90,74 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
   const token = process.env.ABACATE_PAY_API
 
   try {
+    const donation = await getDonationByExternalId(id)
+
+    if (!donation) {
+      return res.status(404).json({ message: 'Doação não encontrada' })
+    }
+
+
+    if (donation.status !== 'PENDING') {
+      return res.status(200).json({
+        data: {
+          id: donation.external_id,
+          status: donation.status,
+          amount: donation.amount,
+        },
+      })
+    }
+
+
+    const cooldownKey = `pix:check:cooldown:${id}`
+    const onCooldown = await rdb.get(cooldownKey)
+
+    if (onCooldown) {
+      return res.status(200).json({
+        data: {
+          id: donation.external_id,
+          status: donation.status,
+          amount: donation.amount,
+        },
+      })
+    }
+
+
     const url = `https://api.abacatepay.com/v1/pixQrCode/check?id=${id}`
     const response = await fetch(url, {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     })
 
-    const data = await response.json()
-    return res.status(200).json({ data })
+    if (!response.ok) {
+      throw new Error(`Erro ao consultar API externa: ${response.statusText}`)
+    }
+
+    const abacateJson = (await response.json()) as any
+    const abacateStatus = abacateJson.data?.status
+
+    if (abacateStatus && abacateStatus !== donation.status) {
+      await updateDonationPaymentDB(
+        id,
+        null,
+        abacateJson.data?.id,
+        abacateStatus,
+        abacateJson.data?.payment?.fee,
+        JSON.stringify(abacateJson.data),
+        null,
+        null
+      )
+    }
+
+    await rdb.setEx(cooldownKey, 30, 'true')
+
+    return res.status(200).json({
+      data: {
+        id: id,
+        status: abacateStatus || donation.status,
+        amount: abacateJson.data?.amount || donation.amount,
+        pixCode: abacateJson.data?.pixCode,
+      },
+    })
   } catch (error) {
     next(error)
   }
