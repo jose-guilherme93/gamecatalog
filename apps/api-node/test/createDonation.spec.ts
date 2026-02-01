@@ -52,14 +52,16 @@ describe('createDonationPayment', () => {
                 customer: { email: 'test@test.com' },
                 description: 'test',
                 metadata: { externalId: 'user-id-456' }
-            }
+            },
+            user: { userId: 'user-123' }
         }
         const res = mockRes()
 
         await paymentCtrl.createDonationPayment(req, res, vi.fn())
 
         expect(createDonationPaymentDB).toHaveBeenCalledWith(expect.objectContaining({
-            externalId: mockAbacateId // This is what we want!
+            externalId: mockAbacateId,
+            userId: 'user-123'
         }))
 
         expect(res.status).toHaveBeenCalledWith(201)

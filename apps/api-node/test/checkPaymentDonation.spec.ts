@@ -35,7 +35,7 @@ describe('checkPaymentDonation', () => {
 
     it('returns 404 if donation not found in DB', async () => {
         vi.mocked(getDonationByExternalId).mockResolvedValue(null)
-        const req: any = { body: { id: 'non-existent' } }
+        const req: any = { body: { id: 'non-existent' }, user: { userId: 'user-123' } }
         const res = mockRes()
 
         await paymentCtrl.checkPaymentDonation(req, res, vi.fn())
@@ -44,15 +44,33 @@ describe('checkPaymentDonation', () => {
         expect(res.json).toHaveBeenCalledWith({ message: 'Doação não encontrada' })
     })
 
+    it('returns 403 if donation belongs to another user', async () => {
+        const mockDonation = {
+            external_id: 'ext-123',
+            status: 'PENDING',
+            amount: 1000,
+            user_id: 'other-user'
+        }
+        vi.mocked(getDonationByExternalId).mockResolvedValue(mockDonation)
+        const req: any = { body: { id: 'ext-123' }, user: { userId: 'my-user' } }
+        const res = mockRes()
+
+        await paymentCtrl.checkPaymentDonation(req, res, vi.fn())
+
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ message: 'Acesso negado' })
+    })
+
     it('returns status from DB if not PENDING (optimization & IDOR fix)', async () => {
         const mockDonation = {
             external_id: 'ext-123',
             status: 'PAID',
             amount: 1000,
+            user_id: 'user-123',
             customer_data: { email: 'leak@me.com' } // Should not be returned
         }
         vi.mocked(getDonationByExternalId).mockResolvedValue(mockDonation)
-        const req: any = { body: { id: 'ext-123' } }
+        const req: any = { body: { id: 'ext-123' }, user: { userId: 'user-123' } }
         const res = mockRes()
 
         await paymentCtrl.checkPaymentDonation(req, res, vi.fn())
@@ -69,10 +87,10 @@ describe('checkPaymentDonation', () => {
     })
 
     it('returns status from DB if on cooldown (resource saving)', async () => {
-        const mockDonation = { external_id: 'ext-123', status: 'PENDING', amount: 1000 }
+        const mockDonation = { external_id: 'ext-123', status: 'PENDING', amount: 1000, user_id: 'user-123' }
         vi.mocked(getDonationByExternalId).mockResolvedValue(mockDonation)
         vi.mocked(rdb.get).mockResolvedValue('true')
-        const req: any = { body: { id: 'ext-123' } }
+        const req: any = { body: { id: 'ext-123' }, user: { userId: 'user-123' } }
         const res = mockRes()
 
         await paymentCtrl.checkPaymentDonation(req, res, vi.fn())
@@ -107,7 +125,10 @@ describe('checkPaymentDonation', () => {
             json: async () => mockApiResponse
         } as any)
 
-        const req: any = { body: { id: 'ext-123' } }
+        const req: any = { body: { id: 'ext-123' }, user: { userId: 'user-123' } }
+        const donationWithUser = { ...mockDonation, user_id: 'user-123' }
+        vi.mocked(getDonationByExternalId).mockResolvedValue(donationWithUser)
+
         const res = mockRes()
 
         await paymentCtrl.checkPaymentDonation(req, res, vi.fn())

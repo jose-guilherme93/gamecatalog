@@ -65,6 +65,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       status: 'PENDING' as const,
       metadata: req.body.metadata,
       expiresIn: 223,
+      userId: (req.user as any)?.userId,
     }
 
     await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
@@ -94,6 +95,12 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
 
     if (!donation) {
       return res.status(404).json({ message: 'Doação não encontrada' })
+    }
+
+    const userId = (req.user as any)?.userId
+    if (donation.user_id && donation.user_id !== userId) {
+      logger.warn(`Tentativa de acesso não autorizado à doação ${id} pelo usuário ${userId}`)
+      return res.status(403).json({ message: 'Acesso negado' })
     }
 
 

@@ -17,6 +17,7 @@ export const donationSchema = z.object({
   metadata: z.object({
     externalId: z.string(),
   }).optional(),
+  userId: z.string().uuid().optional(),
 })
 
 export type DonationPayload = z.infer<typeof donationSchema>
