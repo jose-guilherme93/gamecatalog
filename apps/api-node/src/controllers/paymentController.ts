@@ -66,6 +66,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       metadata: req.body.metadata,
       expiresIn: 223,
       userId: (req.user as any)?.userId,
+      pixPayload: abacate.data,
     }
 
     await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
@@ -76,7 +77,9 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       return res.status(201).json({
         message: 'Doação iniciada com sucesso',
         id: abacate.data,
-        pixCode: abacate.data!.pixCode,
+        pixCode: abacate.data!.brCode,
+        brCode: abacate.data!.brCode,
+        brCodeBase64: abacate.data!.brCodeBase64,
       })
     }
 
@@ -110,6 +113,9 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
           id: donation.external_id,
           status: donation.status,
           amount: donation.amount,
+          pixCode: donation.pix_payload?.brCode || donation.pix_payload?.pixCode,
+          brCode: donation.pix_payload?.brCode,
+          brCodeBase64: donation.pix_payload?.brCodeBase64,
         },
       })
     }
@@ -124,6 +130,9 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
           id: donation.external_id,
           status: donation.status,
           amount: donation.amount,
+          pixCode: donation.pix_payload?.brCode || donation.pix_payload?.pixCode,
+          brCode: donation.pix_payload?.brCode,
+          brCodeBase64: donation.pix_payload?.brCodeBase64,
         },
       })
     }
@@ -149,7 +158,7 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
         abacateJson.data?.id,
         abacateStatus,
         abacateJson.data?.payment?.fee,
-        JSON.stringify(abacateJson.data),
+        abacateJson.data,
         null,
         null
       )
@@ -162,7 +171,9 @@ export async function checkPaymentDonation(req: Request, res: Response, next: Ne
         id: id,
         status: abacateStatus || donation.status,
         amount: abacateJson.data?.amount || donation.amount,
-        pixCode: abacateJson.data?.pixCode,
+        pixCode: abacateJson.data?.brCode || abacateJson.data?.pixCode,
+        brCode: abacateJson.data?.brCode,
+        brCodeBase64: abacateJson.data?.brCodeBase64,
       },
     })
   } catch (error) {
@@ -191,7 +202,7 @@ export async function handleAbacatePayWebhook(req: Request, res: Response, next:
     const pixId = pixQrCode?.id ?? null
     const status = pixQrCode?.status ?? null
     const platformFee = payment?.fee ?? null
-    const pixPayload = payload ? JSON.stringify(payload) : null
+    const pixPayload = payload || null
     const customerData = pixQrCode?.customer ?? payload?.customer ?? null
     const abacatepayCustomerId = pixQrCode?.customer?.id ?? null
 

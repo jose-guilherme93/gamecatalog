@@ -35,7 +35,8 @@ describe('createDonationPayment', () => {
         const mockApiResponse = {
             data: {
                 id: mockAbacateId,
-                pixCode: 'qr-code-data'
+                brCode: 'qr-code-data',
+                brCodeBase64: 'base64-data'
             }
         }
 
@@ -61,7 +62,8 @@ describe('createDonationPayment', () => {
 
         expect(createDonationPaymentDB).toHaveBeenCalledWith(expect.objectContaining({
             externalId: mockAbacateId,
-            userId: 'user-123'
+            userId: 'user-123',
+            pixPayload: mockApiResponse.data
         }))
 
         expect(res.status).toHaveBeenCalledWith(201)

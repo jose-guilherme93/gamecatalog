@@ -80,7 +80,10 @@ describe('checkPaymentDonation', () => {
             data: {
                 id: 'ext-123',
                 status: 'PAID',
-                amount: 1000
+                amount: 1000,
+                pixCode: undefined, // Or mock values if provided
+                brCode: undefined,
+                brCodeBase64: undefined
             }
         })
         expect(global.fetch).not.toHaveBeenCalled()
@@ -100,7 +103,10 @@ describe('checkPaymentDonation', () => {
             data: {
                 id: 'ext-123',
                 status: 'PENDING',
-                amount: 1000
+                amount: 1000,
+                pixCode: undefined,
+                brCode: undefined,
+                brCodeBase64: undefined
             }
         })
         expect(global.fetch).not.toHaveBeenCalled()
@@ -117,7 +123,8 @@ describe('checkPaymentDonation', () => {
                 id: 'pix-123',
                 payment: { fee: 50 },
                 amount: 1000,
-                pixCode: 'qr-code-data'
+                brCode: 'qr-code-data',
+                brCodeBase64: 'base64-data'
             }
         }
         vi.mocked(global.fetch).mockResolvedValue({
@@ -140,7 +147,7 @@ describe('checkPaymentDonation', () => {
             'pix-123',
             'PAID',
             50,
-            JSON.stringify(mockApiResponse.data),
+            mockApiResponse.data,
             null,
             null
         )
@@ -151,7 +158,9 @@ describe('checkPaymentDonation', () => {
                 id: 'ext-123',
                 status: 'PAID',
                 amount: 1000,
-                pixCode: 'qr-code-data'
+                pixCode: 'qr-code-data',
+                brCode: 'qr-code-data',
+                brCodeBase64: 'base64-data'
             }
         })
     })
