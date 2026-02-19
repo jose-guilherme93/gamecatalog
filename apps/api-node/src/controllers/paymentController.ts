@@ -76,10 +76,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
       logger.info(`Doação criada com sucesso: ${donationData.id}`)
       return res.status(201).json({
         message: 'Doação iniciada com sucesso',
-        id: abacate.data,
-        pixCode: abacate.data!.brCode,
-        brCode: abacate.data!.brCode,
-        brCodeBase64: abacate.data!.brCodeBase64,
+        data: abacate.data,
       })
     }
 

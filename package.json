@@ -6,9 +6,8 @@
   "scripts": {
     "api:dev": "pnpm --filter @gamecatalog/api dev",
     "web:dev": "pnpm --filter @gamecatalog/web dev",
-    "worker:dev": "infisical run -- pnpm --filter @gamecatalog/worker-donations dev",
+    "worker:dev": "pnpm --filter @gamecatalog/worker-donations dev",
     "api:prod": "infisical run -- pnpm --filter @gamecatalog/api start",
-    "api:act": "infisical run --  pnpm --filter @gamecatalog/api dev",
     "api:migrate:dev": "pnpm --filter @gamecatalog/api migrate:dev",
     "api:migrate:prod": "pnpm --filter @gamecatalog/api migrate:prod",
     "api:build": "pnpm --filter @gamecatalog/api build",
@@ -23,10 +22,5 @@
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
     "husky": "^9.1.7"
-  },
-  "dependencies": {
-    "axios": "^1.13.2",
-    "react-icons": "^5.5.0",
-    "redis": "^5.10.0"
   }
 }

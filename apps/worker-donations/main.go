@@ -50,7 +50,7 @@ func main() {
 	}
 
 	queueName := "pix:donations:queue"
-	fmt.Printf("🚀 Worker Go monitorando fila [%s] no modo %s\n", queueName, os.Getenv("NODE_ENV"))
+	fmt.Printf(" Worker Go monitorando fila [%s] no modo %s\n", queueName, os.Getenv("NODE_ENV"))
 
 	for {
 		result, err := rdb.BLPop(ctx, 0, queueName).Result()
@@ -95,7 +95,7 @@ func sendEmail(p PaymentPayload) error {
 	password := os.Getenv("USER_PASSWORD_TRANSPORTER_MAILER")
 
 	if username == "" || password == "" {
-		log.Printf("⚠️ SMTP credentials not set (USERNAME_MAILER/USER_PASSWORD_TRANSPORTER_MAILER). Skipping email.")
+		log.Printf(" SMTP credentials not set (USERNAME_MAILER/USER_PASSWORD_TRANSPORTER_MAILER). Skipping email.")
 		return nil
 	}
 
@@ -116,7 +116,7 @@ func sendEmail(p PaymentPayload) error {
 		subject = "Sua doação foi reembolsada"
 		body = fmt.Sprintf("Olá %s,\n\nA sua doação de R$ %.2f foi reembolsada com sucesso.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
 	default:
-		log.Printf("❓ Status desconhecido [%s], ignorando envio de email.", p.Status)
+		log.Printf(" Status desconhecido [%s], ignorando envio de email.", p.Status)
 		return nil
 	}
 
@@ -132,6 +132,6 @@ func sendEmail(p PaymentPayload) error {
 		return fmt.Errorf("erro ao enviar email: %w", err)
 	}
 
-	log.Printf("📧 Email de [%s] enviado com sucesso para %s", p.Status, p.Customer.Email)
+	log.Printf(" Email de [%s] enviado com sucesso para %s", p.Status, p.Customer.Email)
 	return nil
 }

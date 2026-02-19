@@ -33,7 +33,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    # Limita memória para simular sua VPS de 1GB
+
     deploy:
       resources:
         limits:
