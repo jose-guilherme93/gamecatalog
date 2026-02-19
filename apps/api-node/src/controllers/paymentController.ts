@@ -70,6 +70,7 @@ export async function createDonationPayment(req: Request, res: Response, next: N
     }
 
     await rdb.lPush('pix:donations:queue', JSON.stringify(donationData))
+    console.log(rdb)
     const queryDB: QueryResult = await createDonationPaymentDB(donationData as any)
 
     if (queryDB.rowCount! > 0) {
@@ -200,8 +201,16 @@ export async function handleAbacatePayWebhook(req: Request, res: Response, next:
     const status = pixQrCode?.status ?? null
     const platformFee = payment?.fee ?? null
     const pixPayload = payload || null
-    const customerData = pixQrCode?.customer ?? payload?.customer ?? null
-    const abacatepayCustomerId = pixQrCode?.customer?.id ?? null
+    const rawCustomer = pixQrCode?.customer ?? payload?.customer ?? null
+    const customerData = (rawCustomer && typeof rawCustomer === 'object' && 'metadata' in rawCustomer)
+      ? {
+        name: rawCustomer.metadata?.name,
+        email: rawCustomer.metadata?.email,
+        cellphone: rawCustomer.metadata?.cellphone,
+        taxId: rawCustomer.metadata?.taxId
+      }
+      : rawCustomer
+    const abacatepayCustomerId = (rawCustomer && typeof rawCustomer === 'object') ? rawCustomer.id : null
 
     const result = await updateDonationPaymentDB(
       abacateId,
@@ -218,16 +227,17 @@ export async function handleAbacatePayWebhook(req: Request, res: Response, next:
       logger.info(`Doação atualizada via webhook: ${abacateId}`)
 
       // Notify worker about important status changes
-      if (['PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(status)) {
+      const oldStatus = result.rows[0]?.old_status
+      if (['PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(status) && oldStatus !== status) {
         const message = {
           externalId: abacateId,
           status,
-          customer: customerData,
+          customer: result.rows[0]?.customer_data,
           amount: pixQrCode?.amount || payload?.amount,
           id: result.rows[0]?.id || metadataExternalId
         }
         await rdb.lPush('pix:donations:queue', JSON.stringify(message))
-        logger.info(`Notificação de status ${status} enviada para a fila para ${abacateId}`)
+        logger.info(`Notificação de status ${status} enviada para a fila para ${abacateId} (Transição: ${oldStatus} -> ${status})`)
       }
     } else {
       logger.warn(`Doação não encontrada para atualizar via webhook: ${abacateId}`)

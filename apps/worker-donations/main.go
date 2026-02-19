@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,9 +30,6 @@ type PaymentPayload struct {
 }
 
 func main() {
-	// Load environment variables if .env exists
-	_ = godotenv.Load()
-
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
 		redisAddr = "127.0.0.1:6379"
@@ -50,7 +46,9 @@ func main() {
 	}
 
 	queueName := "pix:donations:queue"
-	fmt.Printf(" Worker Go monitorando fila [%s] no modo %s\n", queueName, os.Getenv("NODE_ENV"))
+	fmt.Printf(" [DEBUG] REDIS_ADDR: %s\n", os.Getenv("REDIS_ADDR"))
+	fmt.Printf(" [DEBUG] USERNAME_MAILER: %s\n", os.Getenv("USERNAME_MAILER"))
+	fmt.Printf(" Worker Go monitorando fila [%s] %s\n", queueName, os.Getenv("NODE_ENV"))
 
 	for {
 		result, err := rdb.BLPop(ctx, 0, queueName).Result()
@@ -73,13 +71,12 @@ func main() {
 func processPayment(payloadStr string) error {
 	var payload PaymentPayload
 	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
-		// If it's the old payload format (just creation data), we might just log it
 		log.Printf(" Payload format mismatch or creation event: %s", payloadStr)
 		return nil
 	}
 
 	if payload.Status == "" {
-		log.Printf("ℹRecebido evento de criação (sem status): %s", payload.ID)
+		log.Printf("Recebido evento de criação (sem status): %s", payload.ID)
 		return nil
 	}
 
@@ -105,16 +102,16 @@ func sendEmail(p PaymentPayload) error {
 	switch p.Status {
 	case "PAID":
 		subject = "Obrigado pela sua doação!"
-		body = fmt.Sprintf("Olá %s,\n\nRecebemos sua doação de R$ %.2f com sucesso. Muito obrigado por apoiar o GameCatalog!\n\nID do Pagamento: %s", p.Customer.Name, valueBrl, p.ID)
+		body = fmt.Sprintf("Olá %s,\r\n\r\nRecebemos sua doação de R$ %.2f com sucesso. Muito obrigado por apoiar o GameCatalog!\n\nID do Pagamento: %s", p.Customer.Name, valueBrl, p.ID)
 	case "EXPIRED":
 		subject = "Sua cobrança PIX expirou"
-		body = fmt.Sprintf("Olá %s,\n\nA cobrança PIX para sua doação de R$ %.2f expirou. Se ainda desejar contribuir, você pode gerar uma nova doação no nosso site.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
+		body = fmt.Sprintf("Olá %s,\r\n\r\nA cobrança PIX para sua doação de R$ %.2f expirou. Se ainda desejar contribuir, você pode gerar uma nova doação no nosso site.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
 	case "CANCELLED":
 		subject = "Doação cancelada"
-		body = fmt.Sprintf("Olá %s,\n\nSua doação de R$ %.2f foi cancelada.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
+		body = fmt.Sprintf("Olá %s,\r\n\r\nSua doação de R$ %.2f foi cancelada.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
 	case "REFUNDED":
 		subject = "Sua doação foi reembolsada"
-		body = fmt.Sprintf("Olá %s,\n\nA sua doação de R$ %.2f foi reembolsada com sucesso.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
+		body = fmt.Sprintf("Olá %s,\r\n\r\nA sua doação de R$ %.2f foi reembolsada com sucesso.\n\nID: %s", p.Customer.Name, valueBrl, p.ID)
 	default:
 		log.Printf(" Status desconhecido [%s], ignorando envio de email.", p.Status)
 		return nil
@@ -127,7 +124,8 @@ func sendEmail(p PaymentPayload) error {
 		"\r\n"+
 		"%s\r\n", p.Customer.Email, subject, body))
 
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, "noreply@gamecatalog.com", to, msg)
+	from := "noreply@gamecatalog.com"
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, msg)
 	if err != nil {
 		return fmt.Errorf("erro ao enviar email: %w", err)
 	}

@@ -55,16 +55,17 @@ export async function updateDonationPaymentDB(
     await client.query('BEGIN')
 
     const updateQuery = await client.query(
-      `UPDATE donations SET
-        status = COALESCE($1, status),
-        pix_id = COALESCE($2, pix_id),
-        platform_fee = COALESCE($3, platform_fee),
-        pix_payload = COALESCE($4, pix_payload),
-        customer_data = COALESCE($5, customer_data),
-        abacatepay_customer_id = COALESCE($6, abacatepay_customer_id),
+      `UPDATE donations d SET
+        status = COALESCE($1, d.status),
+        pix_id = COALESCE($2, d.pix_id),
+        platform_fee = COALESCE($3, d.platform_fee),
+        pix_payload = COALESCE($4, d.pix_payload),
+        customer_data = COALESCE($5, d.customer_data),
+        abacatepay_customer_id = COALESCE($6, d.abacatepay_customer_id),
         updated_at = NOW()
-      WHERE external_id = $7 OR external_id = $8
-      RETURNING *`,
+      FROM (SELECT id, status FROM donations WHERE external_id = $7 OR external_id = $8 FOR UPDATE) old
+      WHERE d.id = old.id
+      RETURNING d.*, old.status as old_status`,
       [
         status,
         pixId,
@@ -79,11 +80,15 @@ export async function updateDonationPaymentDB(
 
     if (updateQuery.rowCount! > 0 && status) {
       const donation = updateQuery.rows[0]
-      await client.query(
-        `INSERT INTO donation_status_history (donation_id, status, payload)
-         VALUES ($1, $2, $3)`,
-        [donation.id, status, typeof pixPayload === 'string' ? pixPayload : JSON.stringify(pixPayload)],
-      )
+      const oldStatus = donation.old_status
+
+      if (oldStatus !== status) {
+        await client.query(
+          `INSERT INTO donation_status_history (donation_id, status, payload)
+           VALUES ($1, $2, $3)`,
+          [donation.id, status, typeof pixPayload === 'string' ? pixPayload : JSON.stringify(pixPayload)],
+        )
+      }
     }
 
     await client.query('COMMIT')
