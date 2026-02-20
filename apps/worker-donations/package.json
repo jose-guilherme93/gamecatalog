@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "scripts": {
     "build": "go build -o ../../dist/worker-donations main.go",
-    "dev": "go run main.go"
+    "dev": "infisical run go run main.go"
   }
 }

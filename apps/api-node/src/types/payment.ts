@@ -17,6 +17,8 @@ export const donationSchema = z.object({
   metadata: z.object({
     externalId: z.string(),
   }).optional(),
+  userId: z.string().uuid().optional(),
+  pixPayload: z.any().optional(),
 })
 
 export type DonationPayload = z.infer<typeof donationSchema>
@@ -56,6 +58,8 @@ export const abacateCreateResponseSchema = z.object({
       fee: z.number().optional(),
       method: z.string().optional(),
     }).optional(),
+    brCode: z.string().optional(),
+    brCodeBase64: z.string().optional(),
   }).optional(),
 })
 

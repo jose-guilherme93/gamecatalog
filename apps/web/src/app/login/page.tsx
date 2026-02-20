@@ -23,7 +23,7 @@ export default function LoginPage() {
       if (res.ok) {
         const data = await res.json()
         console.log('Login successful:', data)
-        localStorage.setItem('sessionToken', data.sessionToken)
+        document.cookie = `sessionToken=${data.sessionToken}; path=/; max-age=3600; SameSite=Lax`
         router.push('/profile')
       } else {
         const errorData = await res.json()

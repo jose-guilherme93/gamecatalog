@@ -1,82 +1,149 @@
-[![Status da Build](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
-[![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Tecnologias](https://img.shields.io/badge/Stack-Full%20Stack%20TS-informational)](https://www.typescriptlang.org/)
+# GameCatalog Monorepo
+
+[![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jose-guilherme93/gamecatalog)
+[![Stack](https://img.shields.io/badge/Stack-Full%20Stack-informational)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Monitoramento](https://img.shields.io/badge/Monitoring-Grafana-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
+[![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Go](https://img.shields.io/badge/Worker-Go-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 
-# Documentação do Projeto `Gamecatalog`
-
-Este é um projeto **Node.js/Express.js** estruturado como uma **API REST** robusta. Ele utiliza um design **MVC simplificado**, com foco em separação de responsabilidades entre controladores, modelos e rotas.
-
----
-
-## ⚙️ Tecnologias e Dependências
-
-O projeto é construído sobre as seguintes tecnologias principais:
-
-* **Node.js**: Ambiente de execução assíncrono (utiliza **ES Modules - ESM**).
-* **Express.js**: Framework minimalista para criação de API REST.
-* **PostgreSQL (`pg`)**: Driver oficial para conexão com o banco de dados relacional.
-* **PNPM**: Gerenciador de pacotes eficiente, garantindo a integridade e *caching* de dependências.
-* **Vite/Vitest**: Ambiente de **teste unitário** rápido e moderno.
-* **Winston**: Biblioteca de *logging* para gerenciamento estruturado de logs de aplicação.
-* **JWT (`jsonwebtoken`)**: Implementação de autenticação baseada em tokens.
-* **Dotenv**: Gerenciamento seguro de **variáveis de ambiente**.
+Bem-vindo ao **GameCatalog**, uma plataforma para gerenciamento de avaliações de games. Registre seu perfil, notas, pensamentos e outras informações sobre qualquer game que jogou ou quer jogar.
 
 ---
 
-## 📂 Estrutura de Arquivos
+## Arquitetura do Projeto
 
-A organização do projeto segue uma arquitetura modular clara, facilitando a navegação e a manutenção:
+Este é um monorepo gerenciado por **pnpm workspaces**, composto por três serviços principais:
 
-* **`src/`**: Contém todo o código-fonte da aplicação.
-    * **`controllers/`**: Lógica de negócio e manipulação das requisições (a camada de serviço).
-    * **`migrations/`**: Scripts SQL ou JS/TS para versionamento e gerenciamento do esquema do banco de dados.
-    * **`models/`**: Representação dos dados e interação direta com o banco de dados (a camada de dados).
-    * **`routes/`**: Definição dos endpoints da API e mapeamento para os *controllers*.
-    * **`utils/`**: Funções utilitárias e *middlewares* compartilhados (`connectDatabase.js`, `middlewares.js`).
-* **`package.json`**: Metadados do projeto. O campo `"type": "module"` indica o uso obrigatório de **sintaxe ESM (`import/export`)**.
-* **`.env`**: **Variáveis de ambiente sensíveis**. **Este arquivo deve ser sempre ignorado pelo Git.**
-* **`pnpm-lock.yaml`**: Garante a **reprodutibilidade exata** das dependências entre ambientes.
+```mermaid
+graph LR
+    subgraph Frontend
+        Web["Web (Next.js)"]
+    end
 
----
+    subgraph Backend Services
+        API["API (Node.js/Express)"]
+        Worker["Worker (Go)"]
+    end
 
-## 🚀 Como Rodar o Projeto
+    subgraph Data Messaging
+        Postgres[("PostgreSQL")]
+        Redis[("Redis (BullMQ)")]
+    end
 
-Siga os passos abaixo para configurar e iniciar o projeto no seu ambiente de desenvolvimento.
+    subgraph Observability
+        Loki["Loki"]
+        Grafana["Grafana"]
+    end
 
-### 1. Configuração do Ambiente
-
-1.  Certifique-se de ter o **Node.js** (versão 18+ é ideal para ESM) e o **PNPM** instalados.
-2.  Crie um arquivo **`.env.development`** na raiz do projeto com as seguintes variáveis de configuração do PostgreSQL e da chave de segurança:
-
-    ```env
-        PGHOST=localhost
-        PGPORT=5432
-        PGUSER=postgres
-        PGPASSWORD=crudpass
-        PGDATABASE=cruddb
-        JWT_SECRET=qwdnqwldo
-        GF_SECURITY_ADMIN_USER=admin
-        GF_SECURITY_ADMIN_PASSWORD=adminpass
-        USERNAME_MAILER=username-mailtrap
-        USER_PASSWORD_TRANSPORTER_MAILER=password-mailtrap
-    ```
-3. ## 🐳 Docker e Gerenciamento de Containers
-
-O projeto utiliza **Docker Compose** para orquestrar o ambiente de banco de dados (`PostgreSQL`) e sua interface de gerenciamento (`pgAdmin`), garantindo que todos os desenvolvedores usem a mesma infraestrutura de dados.
-
-### 1. Inicialização dos Containers
-
-Para iniciar o banco de dados e o pgAdmin, execute o comando abaixo na raiz do projeto (onde está o `docker-compose.yml`):
-
-```bash
-docker compose up -d
+    Web <--> API
+    API <--> Postgres
+    API --> Redis
+    Redis <--> Worker
+    API -.-> Loki
+    Loki --> Grafana
 ```
 
-### 2. Instalação de Dependências
+### Componentes (apps/)
 
-Execute o comando de instalação de pacotes PNPM para baixar todas as dependências do `package.json` e garantir o *lock* exato via `pnpm-lock.yaml`:
+*   **[Frontend (Next.js)](./apps/web)**: http://localhost:3002
+    *   Next.js 14 (App Router), React 18, Tailwind CSS.
+*   **[API (Node.js)](./apps/api-node)**: http://localhost:3000
+    *   Express 5, TypeScript, PostgreSQL, Zod, Vitest.
+*   **[Payment Worker (Go)](./apps/worker-donations)**:
+    *   Go (Golang), Processamento assíncrono via Redis.
+
+---
+
+## Stack Tecnológica
+
+| Componente | Tecnologias Principais |
+| :--- | :--- |
+| **Infraestrutura** | Docker, Docker Compose, PostgreSQL (15), Redis |
+| **Segurança** | **Infisical** (Secrets Management), JWT, Helmet |
+| **Observabilidade** | Grafana, Loki, Winston Structured Logging |
+| **Gerenciador** | **PNPM** (Workspaces) |
+
+---
+
+## Guia de Onboarding
+
+### 1. Pré-requisitos
+
+*   **Node.js 18+** & **PNPM 10+**
+*   **Go 1.21+**
+*   **Docker & Docker Compose**
+*   **Infisical CLI** (Obrigatório para variáveis de ambiente)
+
+### 2. Configurações de Segredos (Infisical)
+
+O projeto utiliza o **Infisical** para injetar variáveis de ambiente sem a necessidade de arquivos .env locais.
+
+1.  [Instale o Infisical CLI](https://infisical.com/docs/cli/usage).
+2.  Autentique-se:
+    ```bash
+    infisical login
+    ```
+3.  Inicie o workspace (caso necessário):
+    ```bash
+    infisical init
+    ```
+
+### 3. Infraestrutura Local
+
+Suba o banco de dados e o cache via Docker:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+> [!TIP]
+> Para rodar o stack de monitoramento (Grafana + Loki), utilize:
+> docker compose -f grafana-compose.yml up -d
+
+### 4. Instalação e Preparação
+
+Instale as dependências e execute as migrações do banco:
 
 ```bash
 pnpm install
+pnpm api:migrate:dev
+```
+
+---
+
+## Desenvolvimento
+
+### Rodando Tudo Simultaneamente
+```bash
+pnpm dev
+```
+
+### Comandos Individuais (Root)
+| Comando | Descrição |
+| :--- | :--- |
+| pnpm api:dev | Inicia apenas a API Node.js |
+| pnpm web:dev | Inicia apenas o frontend Next.js |
+| pnpm worker:dev | Inicia o worker de doações (Go) |
+| pnpm test | Executa a suíte de testes da API |
+| pnpm build | Gera o build de produção de todos os apps |
+
+---
+
+## Banco de Dados e Migrações
+
+As migrações são gerenciadas manualmente dentro da API Node.js e utilizam infisical para conexão segura.
+
+*   **Criar/Rodar Migrações (Dev):** pnpm api:migrate:dev
+*   **Inserir Seed Data:** pnpm --filter @gamecatalog/api insert-data
+
+---
+
+## Observabilidade & Monitoramento
+
+Os logs da API são enviados para o Loki de forma estruturada. 
+*   **Grafana:** Acesse em http://localhost:9090 (Configurado via grafana-compose.yml).
+*   **User/Pass:** Verifique as variáveis GF_SECURITY_ADMIN_USER no seu Infisical/.env.prod.
+
+---
+Desenvolvido por [José Guilherme (Joseti)](https://github.com/jose-guilherme93). MIT License.

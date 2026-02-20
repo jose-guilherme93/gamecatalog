@@ -45,7 +45,12 @@ export default function ProfilePage() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('sessionToken')
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop()?.split(';').shift()
+    }
+    const token = getCookie('sessionToken')
     if (token) {
       try {
         const decodedToken = jwtDecode<DecodedToken>(token)
@@ -96,7 +101,7 @@ export default function ProfilePage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('sessionToken')
+    document.cookie = 'sessionToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
     localStorage.removeItem('searchQuery')
     router.push('/login')
   }
