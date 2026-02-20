@@ -1,104 +1,149 @@
-# 🎮 GameCatalog Monorepo
+# GameCatalog Monorepo
 
 [![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow.svg)](https://github.com/jose-guilherme93/gamecatalog)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jose-guilherme93/gamecatalog)
 [![Stack](https://img.shields.io/badge/Stack-Full%20Stack-informational)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![Go](https://img.shields.io/badge/Worker-Go-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 
-Bem-vindo ao **GameCatalog**, uma plataforma para gerenciamento de avaliações de games para registrar em seu perfil nota, pensamentos, e outras informações sobre qualquer game que jogou ou quer jogar na vida.
+Bem-vindo ao **GameCatalog**, uma plataforma para gerenciamento de avaliações de games. Registre seu perfil, notas, pensamentos e outras informações sobre qualquer game que jogou ou quer jogar.
 
 ---
 
-## 🏛️ Arquitetura do Projeto
+## Arquitetura do Projeto
 
-O projeto é dividido em três componentes principais localizados na pasta `apps/`:
+Este é um monorepo gerenciado por **pnpm workspaces**, composto por três serviços principais:
 
-### 🌐 [Frontend (Next.js)](./apps/web)
-Interface do usuário moderna construída com:
-- **Next.js 14** (App Router)
-- **React 18** & **Tailwind CSS**
-- **Lucide React** para ícones
-- Autenticação com fluxos de login e registro.
+```mermaid
+graph LR
+    subgraph Frontend
+        Web["Web (Next.js)"]
+    end
 
-### 🚀 [API (Node.js/Express)](./apps/api-node)
-Backend robusto seguindo padrões de excelência:
-- **TypeScript** & **Express 5**
-- **PostgreSQL** com driver `pg`
-- **Zod** para validação de esquemas
-- **Winston** & **Winston-Loki** para logs estruturados
-- **Vitest** para testes automatizados de alta performance.
+    subgraph Backend Services
+        API["API (Node.js/Express)"]
+        Worker["Worker (Go)"]
+    end
 
-### � [Payment Worker (Go)](./apps/worker-donations)
-Serviço de alta performance para processamento assíncrono:
-- **Go (Golang)**
-- Integração com **Redis** para mensageria (filas)
-- Orquestração de notificações de e-mail (Paid, Expired, Cancelled) via SMTP.
+    subgraph Data Messaging
+        Postgres[("PostgreSQL")]
+        Redis[("Redis (BullMQ)")]
+    end
+
+    subgraph Observability
+        Loki["Loki"]
+        Grafana["Grafana"]
+    end
+
+    Web <--> API
+    API <--> Postgres
+    API --> Redis
+    Redis <--> Worker
+    API -.-> Loki
+    Loki --> Grafana
+```
+
+### Componentes (apps/)
+
+*   **[Frontend (Next.js)](./apps/web)**: http://localhost:3002
+    *   Next.js 14 (App Router), React 18, Tailwind CSS.
+*   **[API (Node.js)](./apps/api-node)**: http://localhost:3000
+    *   Express 5, TypeScript, PostgreSQL, Zod, Vitest.
+*   **[Payment Worker (Go)](./apps/worker-donations)**:
+    *   Go (Golang), Processamento assíncrono via Redis.
 
 ---
 
-## 🛠️ Stack Tecnológica
+## Stack Tecnológica
 
 | Componente | Tecnologias Principais |
 | :--- | :--- |
-| **Infraestrutura** | Docker, Docker Compose, PostgreSQL, Redis |
-| **Observabilidade** | Grafana, Loki, Winston |
-| **Segurança** | Infisical (Gerenciamento de Segredos), JWT, Helmet |
-| **Backend** | Node.js, Express, Go |
-| **Frontend** | Next.js, Tailwind CSS |
+| **Infraestrutura** | Docker, Docker Compose, PostgreSQL (15), Redis |
+| **Segurança** | **Infisical** (Secrets Management), JWT, Helmet |
+| **Observabilidade** | Grafana, Loki, Winston Structured Logging |
+| **Gerenciador** | **PNPM** (Workspaces) |
 
 ---
 
-## 🚀 Como Iniciar
+## Guia de Onboarding
 
 ### 1. Pré-requisitos
-Certifique-se de ter instalado:
-- **Node.js 18+** & **PNPM**
-- **Go 1.21+**
-- **Docker** & **Docker Compose**
-- **Infisical CLI** (para gerenciamento de variáveis de ambiente)
 
-### 2. Configurações Iniciais
-Instale as dependências de todo o monorepo:
-```bash
-pnpm install
-```
+*   **Node.js 18+** & **PNPM 10+**
+*   **Go 1.21+**
+*   **Docker & Docker Compose**
+*   **Infisical CLI** (Obrigatório para variáveis de ambiente)
 
-### 3. Infraestrutura
-Suba os serviços essenciais (Banco de Dados e Cache):
+### 2. Configurações de Segredos (Infisical)
+
+O projeto utiliza o **Infisical** para injetar variáveis de ambiente sem a necessidade de arquivos .env locais.
+
+1.  [Instale o Infisical CLI](https://infisical.com/docs/cli/usage).
+2.  Autentique-se:
+    ```bash
+    infisical login
+    ```
+3.  Inicie o workspace (caso necessário):
+    ```bash
+    infisical init
+    ```
+
+### 3. Infraestrutura Local
+
+Suba o banco de dados e o cache via Docker:
+
 ```bash
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-### 4. Rodando o Desenvolvimento
-Para rodar todos os aplicativos simultaneamente em modo de desenvolvimento:
+> [!TIP]
+> Para rodar o stack de monitoramento (Grafana + Loki), utilize:
+> docker compose -f grafana-compose.yml up -d
+
+### 4. Instalação e Preparação
+
+Instale as dependências e execute as migrações do banco:
+
+```bash
+pnpm install
+pnpm api:migrate:dev
+```
+
+---
+
+## Desenvolvimento
+
+### Rodando Tudo Simultaneamente
 ```bash
 pnpm dev
 ```
-O monorepo irá iniciar:
-- **Web**: `http://localhost:3002`
-- **API**: `http://localhost:3000`
-- **Worker**: Monitorando a fila do Redis
+
+### Comandos Individuais (Root)
+| Comando | Descrição |
+| :--- | :--- |
+| pnpm api:dev | Inicia apenas a API Node.js |
+| pnpm web:dev | Inicia apenas o frontend Next.js |
+| pnpm worker:dev | Inicia o worker de doações (Go) |
+| pnpm test | Executa a suíte de testes da API |
+| pnpm build | Gera o build de produção de todos os apps |
 
 ---
 
-## 🧪 Testes e Qualidade
-O projeto prioriza a qualidade do código com testes rigorosos:
-```bash
-# Rodar testes da API
-pnpm test
-```
+## Banco de Dados e Migrações
+
+As migrações são gerenciadas manualmente dentro da API Node.js e utilizam infisical para conexão segura.
+
+*   **Criar/Rodar Migrações (Dev):** pnpm api:migrate:dev
+*   **Inserir Seed Data:** pnpm --filter @gamecatalog/api insert-data
 
 ---
 
-## � Gerenciamento de Segredos
-Utilizamos o **Infisical** para garantir que credenciais sensíveis (APIs de pagamento, bancos de dados, SMTP) nunca vazem. Os scripts de inicialização utilizam `infisical run --` para injetar segredos com segurança em tempo de execução.
+## Observabilidade & Monitoramento
 
----
-
-## 📈 Monitoramento
-Logs são centralizados no **Grafana** via **Loki**. Configure seu container Loki para receber logs do `winston-loki` da API para uma visão 360º da saúde do sistema.
+Os logs da API são enviados para o Loki de forma estruturada. 
+*   **Grafana:** Acesse em http://localhost:9090 (Configurado via grafana-compose.yml).
+*   **User/Pass:** Verifique as variáveis GF_SECURITY_ADMIN_USER no seu Infisical/.env.prod.
 
 ---
 Desenvolvido por [José Guilherme (Joseti)](https://github.com/jose-guilherme93). MIT License.

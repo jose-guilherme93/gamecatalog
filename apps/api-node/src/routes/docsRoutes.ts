@@ -3,6 +3,6 @@ import express, { Router } from 'express'
 
 const router: Router = express.Router()
 
-router.get('/', getDocs )
+router.get('/', getDocs)
 
 export default router
